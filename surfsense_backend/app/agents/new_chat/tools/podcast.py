@@ -84,6 +84,8 @@ def create_generate_podcast_tool(
         source_content: str,
         podcast_title: str = "SurfSense Podcast",
         user_prompt: str | None = None,
+        speaker_profile_id: int | None = None,
+        episode_profile_id: int | None = None,
     ) -> dict[str, Any]:
         """
         Generate a podcast from the provided content.
@@ -100,6 +102,8 @@ def create_generate_podcast_tool(
             source_content: The text content to convert into a podcast.
             podcast_title: Title for the podcast (default: "SurfSense Podcast")
             user_prompt: Optional instructions for podcast style, tone, or format.
+            speaker_profile_id: Optional speaker profile ID for multi-speaker podcasts.
+            episode_profile_id: Optional episode profile ID for episode settings.
 
         Returns:
             A dictionary containing:
@@ -126,6 +130,8 @@ def create_generate_podcast_tool(
                 status=PodcastStatus.PENDING,
                 search_space_id=search_space_id,
                 thread_id=thread_id,
+                speaker_profile_id=speaker_profile_id,
+                episode_profile_id=episode_profile_id,
             )
             db_session.add(podcast)
             await db_session.commit()
@@ -140,6 +146,8 @@ def create_generate_podcast_tool(
                 source_content=source_content,
                 search_space_id=search_space_id,
                 user_prompt=user_prompt,
+                speaker_profile_id=speaker_profile_id,
+                episode_profile_id=episode_profile_id,
             )
 
             set_generating_podcast(search_space_id, podcast.id)

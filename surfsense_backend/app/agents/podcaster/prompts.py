@@ -1,4 +1,72 @@
 import datetime
+import json
+from pathlib import Path
+from typing import Optional
+
+from jinja2 import Environment, FileSystemLoader
+
+from .models import Outline, SpeakerProfile, outline_parser, create_validated_transcript_parser
+
+_TEMPLATE_DIR = Path(__file__).parent / "templates"
+_jinja_env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=False)
+
+
+def get_outline_prompt(
+    briefing: str,
+    context: str,
+    speakers: list,
+    num_segments: int = 3,
+    language: Optional[str] = None,
+) -> str:
+    """Render the outline Jinja2 template."""
+    template = _jinja_env.get_template("outline.jinja")
+    return template.render(
+        briefing=briefing,
+        context=context,
+        speakers=speakers,
+        num_segments=num_segments,
+        language=language,
+        format_instructions=outline_parser.get_format_instructions(),
+    )
+
+
+def get_transcript_segment_prompt(
+    briefing: str,
+    context: str,
+    outline: Outline,
+    segment: dict,
+    speakers: list,
+    speaker_names: list[str],
+    turns: int,
+    transcript: Optional[list] = None,
+    is_final: bool = False,
+    language: Optional[str] = None,
+) -> str:
+    """Render the transcript Jinja2 template for a single segment."""
+    parser = create_validated_transcript_parser(speaker_names)
+    template = _jinja_env.get_template("transcript.jinja")
+
+    # Serialize outline and accumulated transcript for the template
+    outline_str = json.dumps(outline.model_dump(), indent=2)
+    transcript_str = (
+        json.dumps([d if isinstance(d, dict) else d.model_dump() for d in transcript], indent=2)
+        if transcript
+        else ""
+    )
+
+    return template.render(
+        briefing=briefing,
+        context=context,
+        outline=outline_str,
+        segment=json.dumps(segment, indent=2),
+        speakers=speakers,
+        speaker_names=speaker_names,
+        turns=turns,
+        transcript=transcript_str,
+        is_final=is_final,
+        language=language,
+        format_instructions=parser.get_format_instructions(),
+    )
 
 
 def get_podcast_generation_prompt(user_prompt: str | None = None):

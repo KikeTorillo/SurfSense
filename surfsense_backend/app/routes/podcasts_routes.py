@@ -17,12 +17,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import (
     Permission,
     Podcast,
+    PodcastStatus,
     SearchSpace,
     SearchSpaceMembership,
     User,
     get_async_session,
 )
-from app.schemas import PodcastRead
+from app.schemas import PodcastGenerateRequest, PodcastRead
 from app.users import current_active_user
 from app.utils.rbac import check_permission
 
@@ -153,6 +154,77 @@ async def delete_podcast(
         raise HTTPException(
             status_code=500, detail="Database error occurred while deleting podcast"
         ) from None
+
+
+@router.post("/podcasts/generate")
+async def generate_podcast(
+    body: PodcastGenerateRequest,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Generate a podcast from source content.
+
+    Creates a podcast record and dispatches a Celery task.
+    Returns the podcast_id for polling.
+    """
+    await check_permission(
+        session,
+        user,
+        body.search_space_id,
+        Permission.PODCASTS_CREATE.value,
+        "You don't have permission to create podcasts in this search space",
+    )
+
+    from app.agents.new_chat.tools.podcast import (
+        get_generating_podcast_id,
+        set_generating_podcast,
+    )
+
+    generating_id = get_generating_podcast_id(body.search_space_id)
+    if generating_id:
+        return {
+            "status": "generating",
+            "podcast_id": generating_id,
+            "title": body.title,
+            "message": "A podcast is already being generated. Please wait for it to complete.",
+        }
+
+    try:
+        podcast = Podcast(
+            title=body.title,
+            status=PodcastStatus.PENDING,
+            search_space_id=body.search_space_id,
+            speaker_profile_id=body.speaker_profile_id,
+            episode_profile_id=body.episode_profile_id,
+        )
+        session.add(podcast)
+        await session.commit()
+        await session.refresh(podcast)
+
+        from app.tasks.celery_tasks.podcast_tasks import (
+            generate_content_podcast_task,
+        )
+
+        generate_content_podcast_task.delay(
+            podcast_id=podcast.id,
+            source_content=body.source_content,
+            search_space_id=body.search_space_id,
+            user_prompt=body.user_prompt,
+            speaker_profile_id=body.speaker_profile_id,
+            episode_profile_id=body.episode_profile_id,
+        )
+
+        set_generating_podcast(body.search_space_id, podcast.id)
+
+        return {
+            "status": "pending",
+            "podcast_id": podcast.id,
+            "title": body.title,
+            "message": "Podcast generation started. This may take a few minutes.",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error starting podcast generation: {e!s}")
 
 
 @router.get("/podcasts/{podcast_id}/stream")

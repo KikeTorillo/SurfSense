@@ -1008,6 +1008,69 @@ class SurfsenseDocsChunk(BaseModel, TimestampMixin):
     document = relationship("SurfsenseDocsDocument", back_populates="chunks")
 
 
+class PodcastSpeakerProfile(BaseModel, TimestampMixin):
+    """Speaker profile for multi-speaker podcasts (1-4 speakers)."""
+
+    __tablename__ = "podcast_speaker_profiles"
+
+    name = Column(String(255), nullable=False)
+    search_space_id = Column(
+        Integer, ForeignKey("searchspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    tts_provider = Column(String(100), nullable=True)
+    tts_model = Column(String(100), nullable=True)
+    speakers = Column(JSONB, nullable=False, server_default="[]")
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+        onupdate=datetime.now(UTC),
+    )
+    created_by = Column(
+        UUID, ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+
+    search_space = relationship("SearchSpace", back_populates="podcast_speaker_profiles")
+    episode_profiles = relationship(
+        "PodcastEpisodeProfile", back_populates="speaker_profile"
+    )
+
+
+class PodcastEpisodeProfile(BaseModel, TimestampMixin):
+    """Episode profile for configuring podcast generation parameters."""
+
+    __tablename__ = "podcast_episode_profiles"
+
+    name = Column(String(255), nullable=False)
+    search_space_id = Column(
+        Integer, ForeignKey("searchspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    speaker_profile_id = Column(
+        Integer,
+        ForeignKey("podcast_speaker_profiles.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    num_segments = Column(Integer, nullable=False, server_default="3")
+    language = Column(String(10), nullable=False, server_default="en")
+    default_briefing = Column(Text, nullable=True)
+    outline_prompt = Column(Text, nullable=True)
+    transcript_prompt = Column(Text, nullable=True)
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+        onupdate=datetime.now(UTC),
+    )
+    created_by = Column(
+        UUID, ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+
+    search_space = relationship("SearchSpace", back_populates="podcast_episode_profiles")
+    speaker_profile = relationship(
+        "PodcastSpeakerProfile", back_populates="episode_profiles"
+    )
+
+
 class Podcast(BaseModel, TimestampMixin):
     """Podcast model for storing generated podcasts."""
 
@@ -1041,6 +1104,20 @@ class Podcast(BaseModel, TimestampMixin):
         index=True,
     )
     thread = relationship("NewChatThread")
+
+    speaker_profile_id = Column(
+        Integer,
+        ForeignKey("podcast_speaker_profiles.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    episode_profile_id = Column(
+        Integer,
+        ForeignKey("podcast_episode_profiles.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    outline = Column(JSONB, nullable=True)
+    language = Column(String(10), nullable=True)
+    num_speakers = Column(Integer, server_default="2")
 
 
 class Report(BaseModel, TimestampMixin):
@@ -1225,6 +1302,16 @@ class SearchSpace(BaseModel, TimestampMixin):
         "Podcast",
         back_populates="search_space",
         order_by="Podcast.id.desc()",
+        cascade="all, delete-orphan",
+    )
+    podcast_speaker_profiles = relationship(
+        "PodcastSpeakerProfile",
+        back_populates="search_space",
+        cascade="all, delete-orphan",
+    )
+    podcast_episode_profiles = relationship(
+        "PodcastEpisodeProfile",
+        back_populates="search_space",
         cascade="all, delete-orphan",
     )
     reports = relationship(

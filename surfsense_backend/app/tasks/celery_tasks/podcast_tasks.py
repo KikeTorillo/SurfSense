@@ -3,14 +3,16 @@
 import asyncio
 import logging
 import sys
+from typing import Optional
 
 from sqlalchemy import select
 
 from app.agents.podcaster.graph import graph as podcaster_graph
+from app.agents.podcaster.models import SpeakerProfile
 from app.agents.podcaster.state import State as PodcasterState
 from app.celery_app import celery_app
 from app.config import config
-from app.db import Podcast, PodcastStatus
+from app.db import Podcast, PodcastEpisodeProfile, PodcastSpeakerProfile, PodcastStatus
 from app.tasks.celery_tasks import get_celery_session_maker
 
 logger = logging.getLogger(__name__)
@@ -51,6 +53,8 @@ def generate_content_podcast_task(
     source_content: str,
     search_space_id: int,
     user_prompt: str | None = None,
+    speaker_profile_id: Optional[int] = None,
+    episode_profile_id: Optional[int] = None,
 ) -> dict:
     """
     Celery task to generate podcast from source content.
@@ -66,6 +70,8 @@ def generate_content_podcast_task(
                 source_content,
                 search_space_id,
                 user_prompt,
+                speaker_profile_id,
+                episode_profile_id,
             )
         )
         loop.run_until_complete(loop.shutdown_asyncgens())
@@ -95,11 +101,63 @@ async def _mark_podcast_failed(podcast_id: int) -> None:
             logger.error(f"Failed to mark podcast as failed: {e}")
 
 
+async def _load_profiles(
+    session,
+    speaker_profile_id: Optional[int],
+    episode_profile_id: Optional[int],
+) -> tuple[Optional[SpeakerProfile], Optional[object], bool]:
+    """Load speaker/episode profiles from DB. Returns (SpeakerProfile, episode_row, use_legacy)."""
+    speaker_profile = None
+    episode_row = None
+
+    if speaker_profile_id:
+        result = await session.execute(
+            select(PodcastSpeakerProfile).filter(
+                PodcastSpeakerProfile.id == speaker_profile_id
+            )
+        )
+        sp_row = result.scalars().first()
+        if sp_row:
+            speaker_profile = SpeakerProfile(
+                tts_provider=sp_row.tts_provider or "",
+                tts_model=sp_row.tts_model or "",
+                speakers=sp_row.speakers or [],
+            )
+
+    if episode_profile_id:
+        result = await session.execute(
+            select(PodcastEpisodeProfile).filter(
+                PodcastEpisodeProfile.id == episode_profile_id
+            )
+        )
+        episode_row = result.scalars().first()
+
+        # If episode has a speaker_profile_id and we don't have one yet, load it
+        if episode_row and episode_row.speaker_profile_id and not speaker_profile:
+            result = await session.execute(
+                select(PodcastSpeakerProfile).filter(
+                    PodcastSpeakerProfile.id == episode_row.speaker_profile_id
+                )
+            )
+            sp_row = result.scalars().first()
+            if sp_row:
+                speaker_profile = SpeakerProfile(
+                    tts_provider=sp_row.tts_provider or "",
+                    tts_model=sp_row.tts_model or "",
+                    speakers=sp_row.speakers or [],
+                )
+
+    use_legacy = speaker_profile is None
+    return speaker_profile, episode_row, use_legacy
+
+
 async def _generate_content_podcast(
     podcast_id: int,
     source_content: str,
     search_space_id: int,
     user_prompt: str | None = None,
+    speaker_profile_id: Optional[int] = None,
+    episode_profile_id: Optional[int] = None,
 ) -> dict:
     """Generate content-based podcast and update existing record."""
     async with get_celery_session_maker()() as session:
@@ -113,17 +171,41 @@ async def _generate_content_podcast(
             podcast.status = PodcastStatus.GENERATING
             await session.commit()
 
+            # Load profiles if provided
+            speaker_profile, episode_row, use_legacy = await _load_profiles(
+                session, speaker_profile_id, episode_profile_id
+            )
+
+            # Determine settings from episode profile or defaults
+            num_segments = 3
+            language = "en"
+            briefing = ""
+
+            if episode_row:
+                num_segments = episode_row.num_segments or 3
+                language = episode_row.language or "en"
+                briefing = episode_row.default_briefing or ""
+
             graph_config = {
                 "configurable": {
                     "podcast_title": podcast.title,
                     "search_space_id": search_space_id,
                     "user_prompt": user_prompt,
+                    "speaker_profile_id": speaker_profile_id,
+                    "episode_profile_id": episode_profile_id,
+                    "num_speakers": len(speaker_profile.speakers) if speaker_profile else 2,
+                    "language": language,
                 }
             }
 
             initial_state = PodcasterState(
                 source_content=source_content,
                 db_session=session,
+                use_legacy_pipeline=use_legacy,
+                briefing=briefing,
+                num_segments=num_segments,
+                language=language,
+                speaker_profile=speaker_profile,
             )
 
             graph_result = await podcaster_graph.ainvoke(
@@ -133,23 +215,36 @@ async def _generate_content_podcast(
             podcast_transcript = graph_result.get("podcast_transcript", [])
             file_path = graph_result.get("final_podcast_file_path", "")
 
+            # Serialize transcript (handles both legacy and new format)
             serializable_transcript = []
             for entry in podcast_transcript:
                 if hasattr(entry, "speaker_id"):
                     serializable_transcript.append(
                         {"speaker_id": entry.speaker_id, "dialog": entry.dialog}
                     )
+                elif isinstance(entry, dict):
+                    serializable_transcript.append(entry)
                 else:
                     serializable_transcript.append(
-                        {
-                            "speaker_id": entry.get("speaker_id", 0),
-                            "dialog": entry.get("dialog", ""),
-                        }
+                        {"speaker": str(entry), "dialogue": ""}
                     )
 
             podcast.podcast_transcript = serializable_transcript
             podcast.file_location = file_path
             podcast.status = PodcastStatus.READY
+
+            # Save new pipeline metadata
+            if not use_legacy:
+                outline = graph_result.get("outline")
+                if outline and hasattr(outline, "model_dump"):
+                    podcast.outline = outline.model_dump()
+                elif outline and isinstance(outline, dict):
+                    podcast.outline = outline
+                podcast.num_speakers = len(speaker_profile.speakers) if speaker_profile else 2
+                podcast.language = language
+                podcast.speaker_profile_id = speaker_profile_id
+                podcast.episode_profile_id = episode_profile_id
+
             await session.commit()
 
             logger.info(f"Successfully generated podcast: {podcast.id}")

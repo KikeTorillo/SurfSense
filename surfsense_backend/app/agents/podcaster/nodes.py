@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import uuid
 from pathlib import Path
@@ -15,9 +16,20 @@ from app.services.kokoro_tts_service import get_kokoro_tts_service
 from app.services.llm_service import get_agent_llm
 
 from .configuration import Configuration
-from .prompts import get_podcast_generation_prompt
+from .models import (
+    Dialogue,
+    Outline,
+    clean_thinking_content,
+    create_validated_transcript_parser,
+    extract_text_content,
+    outline_parser,
+    resolve_language_name,
+)
+from .prompts import get_outline_prompt, get_podcast_generation_prompt, get_transcript_segment_prompt
 from .state import PodcastTranscriptEntry, PodcastTranscripts, State
-from .utils import get_voice_for_provider
+from .utils import get_voice_for_provider, resolve_speaker_voice
+
+logger = logging.getLogger(__name__)
 
 
 async def create_podcast_transcript(
@@ -235,5 +247,265 @@ async def create_merged_podcast_audio(
 
     return {
         "podcast_transcript": merged_transcript,
+        "final_podcast_file_path": output_path,
+    }
+
+
+# =============================================================================
+# Pipeline routing
+# =============================================================================
+
+
+def route_pipeline(state: State) -> str:
+    """Route to legacy or new pipeline based on state."""
+    if state.use_legacy_pipeline:
+        return "legacy"
+    return "new"
+
+
+# =============================================================================
+# New multi-speaker pipeline nodes
+# =============================================================================
+
+
+SEGMENT_TURNS = {"short": 3, "medium": 6, "long": 10}
+
+
+async def generate_outline(state: State, config: RunnableConfig) -> dict[str, Any]:
+    """Generate a podcast outline from the source content using the LLM."""
+    configuration = Configuration.from_runnable_config(config)
+    search_space_id = configuration.search_space_id
+
+    llm = await get_agent_llm(state.db_session, search_space_id)
+    if not llm:
+        raise RuntimeError(
+            f"No LLM configured for search space {search_space_id}"
+        )
+
+    # Resolve language name for template
+    language_name = None
+    if state.language:
+        try:
+            language_name = resolve_language_name(state.language)
+        except ValueError:
+            language_name = None
+
+    prompt = get_outline_prompt(
+        briefing=state.briefing or f"Create an engaging podcast about the following content.",
+        context=state.source_content,
+        speakers=[s.model_dump() for s in state.speaker_profile.speakers],
+        num_segments=state.num_segments,
+        language=language_name,
+    )
+
+    messages = [
+        SystemMessage(content=prompt),
+        HumanMessage(content=f"<source_content>{state.source_content}</source_content>"),
+    ]
+
+    response = await llm.ainvoke(messages)
+    raw = extract_text_content(response.content)
+    cleaned = clean_thinking_content(raw)
+
+    # Parse outline JSON
+    try:
+        outline = outline_parser.parse(cleaned)
+    except Exception:
+        # Fallback: extract JSON manually
+        json_start = cleaned.find("{")
+        json_end = cleaned.rfind("}") + 1
+        if json_start >= 0 and json_end > json_start:
+            outline = Outline.model_validate(json.loads(cleaned[json_start:json_end]))
+        else:
+            raise ValueError(f"Could not parse outline from LLM response: {cleaned[:200]}")
+
+    logger.info(f"Generated outline with {len(outline.segments)} segments")
+    return {"outline": outline}
+
+
+async def generate_transcript(state: State, config: RunnableConfig) -> dict[str, Any]:
+    """Generate transcript segment by segment, accumulating dialogue."""
+    configuration = Configuration.from_runnable_config(config)
+    search_space_id = configuration.search_space_id
+
+    llm = await get_agent_llm(state.db_session, search_space_id)
+    if not llm:
+        raise RuntimeError(
+            f"No LLM configured for search space {search_space_id}"
+        )
+
+    speaker_names = state.speaker_profile.get_speaker_names()
+    parser = create_validated_transcript_parser(speaker_names)
+
+    language_name = None
+    if state.language:
+        try:
+            language_name = resolve_language_name(state.language)
+        except ValueError:
+            language_name = None
+
+    accumulated: list[Dialogue] = []
+    segments = state.outline.segments
+
+    for idx, segment in enumerate(segments):
+        is_final = idx == len(segments) - 1
+        turns = SEGMENT_TURNS.get(segment.size, 6)
+
+        prompt = get_transcript_segment_prompt(
+            briefing=state.briefing or "Create an engaging podcast about the following content.",
+            context=state.source_content,
+            outline=state.outline,
+            segment=segment.model_dump(),
+            speakers=[s.model_dump() for s in state.speaker_profile.speakers],
+            speaker_names=speaker_names,
+            turns=turns,
+            transcript=accumulated if accumulated else None,
+            is_final=is_final,
+            language=language_name,
+        )
+
+        messages = [
+            SystemMessage(content=prompt),
+            HumanMessage(content=f"Generate the transcript for segment: {segment.name}"),
+        ]
+
+        response = await llm.ainvoke(messages)
+        raw = extract_text_content(response.content)
+        cleaned = clean_thinking_content(raw)
+
+        try:
+            parsed = parser.parse(cleaned)
+        except Exception:
+            # Fallback: extract JSON manually
+            json_start = cleaned.find("{")
+            json_end = cleaned.rfind("}") + 1
+            if json_start >= 0 and json_end > json_start:
+                data = json.loads(cleaned[json_start:json_end])
+                segment_dialogues = [Dialogue(**d) for d in data.get("transcript", [])]
+            else:
+                raise ValueError(
+                    f"Could not parse transcript for segment '{segment.name}': {cleaned[:200]}"
+                )
+        else:
+            segment_dialogues = [
+                Dialogue(speaker=d.speaker, dialogue=d.dialogue)
+                for d in parsed.transcript
+            ]
+
+        accumulated.extend(segment_dialogues)
+        logger.info(
+            f"Segment '{segment.name}': {len(segment_dialogues)} dialogues "
+            f"(total: {len(accumulated)})"
+        )
+
+    return {"transcript": accumulated}
+
+
+async def generate_audio(state: State, config: RunnableConfig) -> dict[str, Any]:
+    """Generate TTS audio for each dialogue entry with batched concurrency."""
+    profile = state.speaker_profile
+    session_id = str(uuid.uuid4())
+    temp_dir = Path("temp_audio")
+    temp_dir.mkdir(exist_ok=True)
+
+    BATCH_SIZE = 5
+    audio_clips: list[str] = []
+
+    async def _tts_one(dialogue: Dialogue, index: int) -> str:
+        """Generate TTS for a single dialogue entry."""
+        speaker = profile.get_speaker_by_name(dialogue.speaker)
+        voice_cfg = resolve_speaker_voice(
+            speaker=speaker,
+            profile=profile,
+            global_tts_service=app_config.TTS_SERVICE or "openai/tts-1",
+            global_tts_api_base=app_config.TTS_SERVICE_API_BASE,
+            global_tts_api_key=app_config.TTS_SERVICE_API_KEY,
+        )
+
+        provider = voice_cfg["provider"]
+        voice = voice_cfg["voice"]
+
+        if provider == "local/kokoro":
+            filename = f"{temp_dir}/{session_id}_{index:04d}.wav"
+            kokoro_service = await get_kokoro_tts_service(lang_code="a")
+            await kokoro_service.generate_speech(
+                text=dialogue.dialogue, voice=voice, speed=1.0, output_path=filename
+            )
+            return filename
+
+        filename = f"{temp_dir}/{session_id}_{index:04d}.mp3"
+        kwargs: dict[str, Any] = {
+            "model": provider,
+            "voice": voice,
+            "input": dialogue.dialogue,
+            "max_retries": 2,
+            "timeout": 600,
+        }
+        if voice_cfg["api_base"]:
+            kwargs["api_base"] = voice_cfg["api_base"]
+        if voice_cfg["api_key"]:
+            kwargs["api_key"] = voice_cfg["api_key"]
+
+        response = await aspeech(**kwargs)
+        with open(filename, "wb") as f:
+            f.write(response.content)
+        return filename
+
+    # Process in batches
+    for batch_start in range(0, len(state.transcript), BATCH_SIZE):
+        batch = state.transcript[batch_start : batch_start + BATCH_SIZE]
+        tasks = [
+            _tts_one(dialogue, batch_start + i)
+            for i, dialogue in enumerate(batch)
+        ]
+        batch_results = await asyncio.gather(*tasks)
+        audio_clips.extend(batch_results)
+
+    logger.info(f"Generated {len(audio_clips)} audio clips")
+    return {"audio_clips": audio_clips}
+
+
+async def combine_audio(state: State, config: RunnableConfig) -> dict[str, Any]:
+    """Concatenate audio clips into a single MP3 using FFmpeg."""
+    session_id = str(uuid.uuid4())
+    output_path = f"podcasts/{session_id}_podcast.mp3"
+    os.makedirs("podcasts", exist_ok=True)
+
+    audio_files = state.audio_clips
+    if not audio_files:
+        raise ValueError("No audio clips to combine")
+
+    try:
+        ffmpeg = FFmpeg().option("y")
+        for audio_file in audio_files:
+            ffmpeg = ffmpeg.input(audio_file)
+
+        filter_parts = [f"[{i}:0]" for i in range(len(audio_files))]
+        filter_complex_str = (
+            "".join(filter_parts) + f"concat=n={len(audio_files)}:v=0:a=1[outa]"
+        )
+        ffmpeg = ffmpeg.option("filter_complex", filter_complex_str)
+        ffmpeg = ffmpeg.output(output_path, map="[outa]")
+        await ffmpeg.execute()
+
+        logger.info(f"Combined audio: {output_path}")
+    except Exception as e:
+        logger.error(f"Error merging audio files: {e!s}")
+        raise
+    finally:
+        for f in audio_files:
+            try:
+                os.remove(f)
+            except Exception:
+                pass
+
+    # Convert transcript to legacy-compatible format for DB storage
+    serializable_transcript = [
+        {"speaker": d.speaker, "dialogue": d.dialogue}
+        for d in state.transcript
+    ]
+
+    return {
+        "podcast_transcript": serializable_transcript,
         "final_podcast_file_path": output_path,
     }

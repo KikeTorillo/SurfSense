@@ -26,30 +26,34 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.create_index(
-        "ix_notifications_user_read_type_created",
-        "notifications",
-        ["user_id", "read", "type", "created_at"],
+    op.execute(
+        """
+        CREATE INDEX IF NOT EXISTS ix_notifications_user_read_type_created
+        ON notifications(user_id, read, type, created_at);
+        """
     )
-    op.create_index(
-        "ix_notifications_user_space_created",
-        "notifications",
-        ["user_id", "search_space_id", "created_at"],
+    op.execute(
+        """
+        CREATE INDEX IF NOT EXISTS ix_notifications_user_space_created
+        ON notifications(user_id, search_space_id, created_at);
+        """
     )
-    op.create_index(
-        "ix_notifications_type",
-        "notifications",
-        ["type"],
+    op.execute(
+        """
+        CREATE INDEX IF NOT EXISTS ix_notifications_type
+        ON notifications(type);
+        """
     )
-    op.create_index(
-        "ix_notifications_search_space_id",
-        "notifications",
-        ["search_space_id"],
+    op.execute(
+        """
+        CREATE INDEX IF NOT EXISTS ix_notifications_search_space_id
+        ON notifications(search_space_id);
+        """
     )
 
 
 def downgrade() -> None:
-    op.drop_index("ix_notifications_search_space_id", table_name="notifications")
-    op.drop_index("ix_notifications_type", table_name="notifications")
-    op.drop_index("ix_notifications_user_space_created", table_name="notifications")
-    op.drop_index("ix_notifications_user_read_type_created", table_name="notifications")
+    op.execute("DROP INDEX IF EXISTS ix_notifications_search_space_id")
+    op.execute("DROP INDEX IF EXISTS ix_notifications_type")
+    op.execute("DROP INDEX IF EXISTS ix_notifications_user_space_created")
+    op.execute("DROP INDEX IF EXISTS ix_notifications_user_read_type_created")

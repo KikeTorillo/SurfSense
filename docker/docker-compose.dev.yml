@@ -158,6 +158,30 @@ services:
   #     - redis
   #     - celery_worker
 
+  # Qwen3-TTS — OpenAI-compatible local TTS server (requires GPU)
+  # Uncomment to enable local TTS generation with Qwen3 voices.
+  # Configure speakers with:
+  #   tts_provider: "openai/tts-1"
+  #   tts_config: {"api_base": "http://qwen3-tts:8000/v1"}
+  # qwen3-tts:
+  #   image: groxaxo/Qwen3-TTS-Openai-Fastapi
+  #   ports:
+  #     - "${QWEN3_TTS_PORT:-8880}:8000"
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 120s
+  #   restart: unless-stopped
+
   electric:
     image: electricsql/electric:1.4.10
     ports:

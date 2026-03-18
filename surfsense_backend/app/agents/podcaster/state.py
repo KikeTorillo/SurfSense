@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from .models import Dialogue, Outline, SpeakerProfile
 
 
 class PodcastTranscriptEntry(BaseModel):
@@ -29,15 +32,25 @@ class PodcastTranscripts(BaseModel):
 
 @dataclass
 class State:
-    """Defines the input state for the agent, representing a narrower interface to the outside world.
+    """Defines the input state for the agent.
 
-    This class is used to define the initial state and structure of incoming data.
     See: https://langchain-ai.github.io/langgraph/concepts/low_level/#state
-    for more information.
     """
 
     # Runtime context
     db_session: AsyncSession
     source_content: str
+
+    # Legacy pipeline fields
     podcast_transcript: list[PodcastTranscriptEntry] | None = None
     final_podcast_file_path: str | None = None
+
+    # New multi-speaker pipeline fields
+    use_legacy_pipeline: bool = True
+    briefing: str = ""
+    num_segments: int = 3
+    language: Optional[str] = None
+    speaker_profile: Optional[SpeakerProfile] = None
+    outline: Optional[Outline] = None
+    transcript: list[Dialogue] = field(default_factory=list)
+    audio_clips: list[str] = field(default_factory=list)
