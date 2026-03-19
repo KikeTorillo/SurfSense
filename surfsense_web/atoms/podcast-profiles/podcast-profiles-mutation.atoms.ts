@@ -84,6 +84,27 @@ export const deleteSpeakerProfileMutationAtom = atomWithMutation((get) => {
 	};
 });
 
+export const duplicateSpeakerProfileMutationAtom = atomWithMutation((get) => {
+	const searchSpaceId = get(activeSearchSpaceIdAtom);
+
+	return {
+		mutationKey: ["podcast-profiles", "speakers", "duplicate"],
+		enabled: !!searchSpaceId,
+		mutationFn: async (id: number) => {
+			return podcastProfilesApiService.duplicateSpeakerProfile(id);
+		},
+		onSuccess: () => {
+			toast.success("Speaker profile duplicated");
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.podcastProfiles.speakers(Number(searchSpaceId)),
+			});
+		},
+		onError: (error: Error) => {
+			toast.error(error.message || "Failed to duplicate speaker profile");
+		},
+	};
+});
+
 // =============================================================================
 // Episode Profile Mutations
 // =============================================================================
@@ -151,6 +172,27 @@ export const deleteEpisodeProfileMutationAtom = atomWithMutation((get) => {
 		},
 		onError: (error: Error) => {
 			toast.error(error.message || "Failed to delete episode profile");
+		},
+	};
+});
+
+export const duplicateEpisodeProfileMutationAtom = atomWithMutation((get) => {
+	const searchSpaceId = get(activeSearchSpaceIdAtom);
+
+	return {
+		mutationKey: ["podcast-profiles", "episodes", "duplicate"],
+		enabled: !!searchSpaceId,
+		mutationFn: async (id: number) => {
+			return podcastProfilesApiService.duplicateEpisodeProfile(id);
+		},
+		onSuccess: () => {
+			toast.success("Episode profile duplicated");
+			queryClient.invalidateQueries({
+				queryKey: cacheKeys.podcastProfiles.episodes(Number(searchSpaceId)),
+			});
+		},
+		onError: (error: Error) => {
+			toast.error(error.message || "Failed to duplicate episode profile");
 		},
 	};
 });

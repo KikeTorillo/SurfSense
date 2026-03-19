@@ -98,6 +98,9 @@ services:
       timeout: 5s
       retries: 30
       start_period: 200s
+    networks:
+      - default
+      - llm-net
 
   celery_worker:
     build: ../surfsense_backend
@@ -123,6 +126,9 @@ services:
         condition: service_healthy
       backend:
         condition: service_healthy
+    networks:
+      - default
+      - llm-net
 
   celery_beat:
     build: ../surfsense_backend
@@ -229,3 +235,7 @@ volumes:
     name: surfsense-dev-redis
   shared_temp:
     name: surfsense-dev-shared-temp
+
+networks:
+  llm-net:
+    external: true

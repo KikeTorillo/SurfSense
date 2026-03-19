@@ -1,12 +1,13 @@
 "use client";
 
 import { makeAssistantToolUI } from "@assistant-ui/react";
-import { AlertCircleIcon, MicIcon } from "lucide-react";
+import { AlertCircleIcon, MicIcon, RefreshCwIcon } from "lucide-react";
 import { useParams, usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { Audio } from "@/components/tool-ui/audio";
 import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 import { baseApiService } from "@/lib/apis/base-api.service";
 import { authenticatedFetch } from "@/lib/auth-utils";
 import { clearActivePodcastTaskId, setActivePodcastTaskId } from "@/lib/chat/podcast-state";
@@ -130,7 +131,36 @@ function PodcastGeneratingState({ title }: { title: string }) {
 /**
  * Error state component shown when podcast generation fails
  */
-function PodcastErrorState({ title, error }: { title: string; error: string }) {
+function PodcastErrorState({
+	title,
+	error,
+	podcastId,
+	onRetrySuccess,
+}: {
+	title: string;
+	error: string;
+	podcastId?: number;
+	onRetrySuccess?: (podcastId: number) => void;
+}) {
+	const [isRetrying, setIsRetrying] = useState(false);
+
+	const handleRetry = async () => {
+		if (!podcastId) return;
+		setIsRetrying(true);
+		try {
+			const res = await baseApiService.post<{ status: string; podcast_id?: number }>(
+				`/api/v1/podcasts/${podcastId}/retry`
+			);
+			if (res?.podcast_id && onRetrySuccess) {
+				onRetrySuccess(res.podcast_id);
+			}
+		} catch (err) {
+			console.error("Retry failed:", err);
+		} finally {
+			setIsRetrying(false);
+		}
+	};
+
 	return (
 		<div className="my-4 overflow-hidden rounded-xl border border-destructive/20 bg-destructive/5 p-4 sm:p-6">
 			<div className="flex items-center gap-3 sm:gap-4">
@@ -143,6 +173,18 @@ function PodcastErrorState({ title, error }: { title: string; error: string }) {
 					</h3>
 					<p className="mt-1 text-destructive text-xs sm:text-sm">Failed to generate podcast</p>
 					<p className="mt-1.5 sm:mt-2 text-muted-foreground text-xs sm:text-sm">{error}</p>
+					{podcastId && (
+						<Button
+							variant="outline"
+							size="sm"
+							className="mt-2 sm:mt-3 gap-2 text-xs"
+							onClick={handleRetry}
+							disabled={isRetrying}
+						>
+							{isRetrying ? <Spinner size="sm" /> : <RefreshCwIcon className="size-3" />}
+							{isRetrying ? "Retrying..." : "Retry"}
+						</Button>
+					)}
 				</div>
 			</div>
 		</div>
@@ -384,7 +426,42 @@ function PodcastStatusPoller({ podcastId, title }: { podcastId: number; title: s
 
 	// Show error state
 	if (podcastStatus.status === "failed") {
-		return <PodcastErrorState title={title} error={podcastStatus.error || "Generation failed"} />;
+		return (
+			<PodcastErrorState
+				title={title}
+				error={podcastStatus.error || "Generation failed"}
+				podcastId={podcastId}
+				onRetrySuccess={() => {
+					setPodcastStatus(null);
+					// Restart polling
+					if (!pollingRef.current) {
+						const pollStatus = async () => {
+							try {
+								const rawResponse = await baseApiService.get<unknown>(
+									`/api/v1/podcasts/${podcastId}`
+								);
+								const response = parsePodcastStatusResponse(rawResponse);
+								if (response) {
+									setPodcastStatus(response);
+									if (response.status === "ready" || response.status === "failed") {
+										if (pollingRef.current) {
+											clearInterval(pollingRef.current);
+											pollingRef.current = null;
+										}
+										clearActivePodcastTaskId();
+									}
+								}
+							} catch (err) {
+								console.error("Error polling podcast status:", err);
+							}
+						};
+						setActivePodcastTaskId(String(podcastId));
+						pollStatus();
+						pollingRef.current = setInterval(pollStatus, 5000);
+					}
+				}}
+			/>
+		);
 	}
 
 	// Show player when ready

@@ -132,6 +132,8 @@ def create_generate_podcast_tool(
                 thread_id=thread_id,
                 speaker_profile_id=speaker_profile_id,
                 episode_profile_id=episode_profile_id,
+                source_content=source_content,
+                user_prompt=user_prompt,
             )
             db_session.add(podcast)
             await db_session.commit()

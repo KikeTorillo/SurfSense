@@ -1118,6 +1118,8 @@ class Podcast(BaseModel, TimestampMixin):
     outline = Column(JSONB, nullable=True)
     language = Column(String(10), nullable=True)
     num_speakers = Column(Integer, server_default="2")
+    source_content = Column(Text, nullable=True)
+    user_prompt = Column(Text, nullable=True)
 
 
 class Report(BaseModel, TimestampMixin):

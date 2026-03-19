@@ -90,9 +90,9 @@ cd surfsense_web && pnpm dev
 # Build
 cd surfsense_web && pnpm build
 
-# Lint con Biome
-npx @biomejs/biome check surfsense_web/
-npx @biomejs/biome check --write surfsense_web/  # auto-fix
+# Lint con Biome (ejecutar desde surfsense_web/ por nested biome.json)
+cd surfsense_web && npx @biomejs/biome check .
+cd surfsense_web && npx @biomejs/biome check --write .  # auto-fix
 ```
 
 ## Patrones de arquitectura — Frontend

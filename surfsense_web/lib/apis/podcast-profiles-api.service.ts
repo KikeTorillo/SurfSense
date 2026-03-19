@@ -62,6 +62,13 @@ class PodcastProfilesApiService {
 		);
 	};
 
+	duplicateSpeakerProfile = async (id: number) => {
+		return baseApiService.post(
+			`/api/v1/podcast-profiles/speakers/${id}/duplicate`,
+			speakerProfileSchema
+		);
+	};
+
 	// =========================================================================
 	// Episode Profiles
 	// =========================================================================
@@ -103,6 +110,13 @@ class PodcastProfilesApiService {
 		return baseApiService.delete(
 			`/api/v1/podcast-profiles/episodes/${id}`,
 			deleteEpisodeProfileResponse
+		);
+	};
+
+	duplicateEpisodeProfile = async (id: number) => {
+		return baseApiService.post(
+			`/api/v1/podcast-profiles/episodes/${id}/duplicate`,
+			episodeProfileSchema
 		);
 	};
 }

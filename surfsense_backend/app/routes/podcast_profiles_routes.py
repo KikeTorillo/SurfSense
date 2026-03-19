@@ -214,6 +214,54 @@ async def delete_speaker_profile(
         ) from None
 
 
+@router.post(
+    "/podcast-profiles/speakers/{profile_id}/duplicate",
+    response_model=SpeakerProfileRead,
+)
+async def duplicate_speaker_profile(
+    profile_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """Duplicate a speaker profile."""
+    try:
+        result = await session.execute(
+            select(PodcastSpeakerProfile).filter(
+                PodcastSpeakerProfile.id == profile_id
+            )
+        )
+        profile = result.scalars().first()
+        if not profile:
+            raise HTTPException(status_code=404, detail="Speaker profile not found")
+        await check_permission(
+            session,
+            user,
+            profile.search_space_id,
+            Permission.PODCASTS_CREATE.value,
+            "You don't have permission to create podcast profiles in this search space",
+        )
+        new_profile = PodcastSpeakerProfile(
+            name=f"{profile.name} (Copy)",
+            search_space_id=profile.search_space_id,
+            tts_provider=profile.tts_provider,
+            tts_model=profile.tts_model,
+            speakers=profile.speakers,
+            created_by=user.id,
+        )
+        session.add(new_profile)
+        await session.commit()
+        await session.refresh(new_profile)
+        return SpeakerProfileRead.from_orm_obj(new_profile)
+    except HTTPException:
+        raise
+    except SQLAlchemyError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Database error occurred while duplicating speaker profile",
+        ) from None
+
+
 # =============================================================================
 # Episode Profiles
 # =============================================================================
@@ -399,4 +447,55 @@ async def delete_episode_profile(
         raise HTTPException(
             status_code=500,
             detail="Database error occurred while deleting episode profile",
+        ) from None
+
+
+@router.post(
+    "/podcast-profiles/episodes/{profile_id}/duplicate",
+    response_model=EpisodeProfileRead,
+)
+async def duplicate_episode_profile(
+    profile_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """Duplicate an episode profile."""
+    try:
+        result = await session.execute(
+            select(PodcastEpisodeProfile).filter(
+                PodcastEpisodeProfile.id == profile_id
+            )
+        )
+        profile = result.scalars().first()
+        if not profile:
+            raise HTTPException(status_code=404, detail="Episode profile not found")
+        await check_permission(
+            session,
+            user,
+            profile.search_space_id,
+            Permission.PODCASTS_CREATE.value,
+            "You don't have permission to create podcast profiles in this search space",
+        )
+        new_profile = PodcastEpisodeProfile(
+            name=f"{profile.name} (Copy)",
+            search_space_id=profile.search_space_id,
+            speaker_profile_id=profile.speaker_profile_id,
+            num_segments=profile.num_segments,
+            language=profile.language,
+            default_briefing=profile.default_briefing,
+            outline_prompt=profile.outline_prompt,
+            transcript_prompt=profile.transcript_prompt,
+            created_by=user.id,
+        )
+        session.add(new_profile)
+        await session.commit()
+        await session.refresh(new_profile)
+        return EpisodeProfileRead.from_orm_obj(new_profile)
+    except HTTPException:
+        raise
+    except SQLAlchemyError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Database error occurred while duplicating episode profile",
         ) from None

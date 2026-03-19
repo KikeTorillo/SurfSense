@@ -3,8 +3,10 @@
 import { useAtomValue } from "jotai";
 import {
 	AlertCircle,
+	Copy,
 	Edit3,
 	Info,
+	LayoutTemplate,
 	Mic,
 	Plus,
 	RefreshCw,
@@ -19,6 +21,8 @@ import {
 	createSpeakerProfileMutationAtom,
 	deleteEpisodeProfileMutationAtom,
 	deleteSpeakerProfileMutationAtom,
+	duplicateEpisodeProfileMutationAtom,
+	duplicateSpeakerProfileMutationAtom,
 	updateEpisodeProfileMutationAtom,
 	updateSpeakerProfileMutationAtom,
 } from "@/atoms/podcast-profiles/podcast-profiles-mutation.atoms";
@@ -62,8 +66,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { PODCAST_TEMPLATES, type PodcastTemplate } from "@/contracts/enums/podcast-templates";
 import { TTS_PROVIDERS, LANGUAGES, getVoicesByProvider } from "@/contracts/enums/tts-providers";
-import type { EpisodeProfile, Speaker, SpeakerProfile } from "@/contracts/types/podcast-profile.types";
+import type {
+	EpisodeProfile,
+	Speaker,
+	SpeakerProfile,
+} from "@/contracts/types/podcast-profile.types";
 import { cn } from "@/lib/utils";
 
 interface PodcastProfileManagerProps {
@@ -135,20 +144,32 @@ const EMPTY_EPISODE_FORM: EpisodeProfileFormData = {
 
 export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerProps) {
 	// Speaker profile mutations
-	const { mutateAsync: createSpeaker, isPending: isCreatingSpeaker } =
-		useAtomValue(createSpeakerProfileMutationAtom);
-	const { mutateAsync: updateSpeaker, isPending: isUpdatingSpeaker } =
-		useAtomValue(updateSpeakerProfileMutationAtom);
-	const { mutateAsync: deleteSpeaker, isPending: isDeletingSpeaker } =
-		useAtomValue(deleteSpeakerProfileMutationAtom);
+	const { mutateAsync: createSpeaker, isPending: isCreatingSpeaker } = useAtomValue(
+		createSpeakerProfileMutationAtom
+	);
+	const { mutateAsync: updateSpeaker, isPending: isUpdatingSpeaker } = useAtomValue(
+		updateSpeakerProfileMutationAtom
+	);
+	const { mutateAsync: deleteSpeaker, isPending: isDeletingSpeaker } = useAtomValue(
+		deleteSpeakerProfileMutationAtom
+	);
+	const { mutateAsync: duplicateSpeaker, isPending: isDuplicatingSpeaker } = useAtomValue(
+		duplicateSpeakerProfileMutationAtom
+	);
 
 	// Episode profile mutations
-	const { mutateAsync: createEpisode, isPending: isCreatingEpisode } =
-		useAtomValue(createEpisodeProfileMutationAtom);
-	const { mutateAsync: updateEpisode, isPending: isUpdatingEpisode } =
-		useAtomValue(updateEpisodeProfileMutationAtom);
-	const { mutateAsync: deleteEpisode, isPending: isDeletingEpisode } =
-		useAtomValue(deleteEpisodeProfileMutationAtom);
+	const { mutateAsync: createEpisode, isPending: isCreatingEpisode } = useAtomValue(
+		createEpisodeProfileMutationAtom
+	);
+	const { mutateAsync: updateEpisode, isPending: isUpdatingEpisode } = useAtomValue(
+		updateEpisodeProfileMutationAtom
+	);
+	const { mutateAsync: deleteEpisode, isPending: isDeletingEpisode } = useAtomValue(
+		deleteEpisodeProfileMutationAtom
+	);
+	const { mutateAsync: duplicateEpisode, isPending: isDuplicatingEpisode } = useAtomValue(
+		duplicateEpisodeProfileMutationAtom
+	);
 
 	// Queries
 	const {
@@ -194,6 +215,9 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 	const [episodeToDelete, setEpisodeToDelete] = useState<EpisodeProfile | null>(null);
 	const [episodeForm, setEpisodeForm] = useState<EpisodeProfileFormData>({ ...EMPTY_EPISODE_FORM });
 
+	const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+	const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
+
 	const isLoading = speakersLoading || episodesLoading;
 	const isSubmittingSpeaker = isCreatingSpeaker || isUpdatingSpeaker;
 	const isSubmittingEpisode = isCreatingEpisode || isUpdatingEpisode;
@@ -205,7 +229,8 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 	// Speaker Profile Handlers
 	// =========================================================================
 
-	const resetSpeakerForm = () => setSpeakerForm({ ...EMPTY_SPEAKER_FORM, speakers: [{ ...DEFAULT_SPEAKER }] });
+	const resetSpeakerForm = () =>
+		setSpeakerForm({ ...EMPTY_SPEAKER_FORM, speakers: [{ ...DEFAULT_SPEAKER }] });
 
 	const openNewSpeakerDialog = () => {
 		setEditingSpeakerProfile(null);
@@ -368,6 +393,37 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 	};
 
 	// =========================================================================
+	// Template Handler
+	// =========================================================================
+
+	const handleApplyTemplate = async (template: PodcastTemplate) => {
+		setIsApplyingTemplate(true);
+		try {
+			const speakerResult = await createSpeaker({
+				name: template.speakerProfile.name,
+				search_space_id: searchSpaceId,
+				tts_provider: template.speakerProfile.tts_provider,
+				tts_model: template.speakerProfile.tts_model,
+				speakers: template.speakerProfile.speakers,
+			});
+			await createEpisode({
+				name: template.episodeProfile.name,
+				search_space_id: searchSpaceId,
+				speaker_profile_id: speakerResult.id,
+				num_segments: template.episodeProfile.num_segments,
+				language: template.episodeProfile.language,
+				default_briefing: template.episodeProfile.default_briefing,
+			});
+			toast.success(`Template "${template.name}" applied successfully`);
+			setIsTemplateDialogOpen(false);
+		} catch {
+			// Errors handled by mutations
+		} finally {
+			setIsApplyingTemplate(false);
+		}
+	};
+
+	// =========================================================================
 	// Voice suggestions for current provider
 	// =========================================================================
 
@@ -387,8 +443,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 		return map;
 	}, [speakerProfiles]);
 
-	const languageLabel = (code: string) =>
-		LANGUAGES.find((l) => l.value === code)?.label || code;
+	const languageLabel = (code: string) => LANGUAGES.find((l) => l.value === code)?.label || code;
 
 	// =========================================================================
 	// Render
@@ -419,8 +474,8 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 					<Alert className="bg-muted/50 py-3 md:py-4">
 						<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 						<AlertDescription className="text-xs md:text-sm">
-							You have <span className="font-medium">read-only</span> access to podcast
-							profiles. Contact a space owner to request additional permissions.
+							You have <span className="font-medium">read-only</span> access to podcast profiles.
+							Contact a space owner to request additional permissions.
 						</AlertDescription>
 					</Alert>
 				</motion.div>
@@ -445,14 +500,25 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 						</Button>
 					</div>
 					{canCreate && (
-						<Button
-							onClick={openNewSpeakerDialog}
-							size="sm"
-							className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-9"
-						>
-							<Plus className="h-3 w-3 md:h-4 md:w-4" />
-							Add Speaker Profile
-						</Button>
+						<div className="flex items-center gap-2">
+							<Button
+								variant="outline"
+								onClick={() => setIsTemplateDialogOpen(true)}
+								size="sm"
+								className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-9"
+							>
+								<LayoutTemplate className="h-3 w-3 md:h-4 md:w-4" />
+								Use Template
+							</Button>
+							<Button
+								onClick={openNewSpeakerDialog}
+								size="sm"
+								className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-9"
+							>
+								<Plus className="h-3 w-3 md:h-4 md:w-4" />
+								Add Speaker Profile
+							</Button>
+						</div>
 					)}
 				</div>
 
@@ -488,7 +554,11 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 									: "No speaker profiles have been added to this space yet."}
 							</p>
 							{canCreate && (
-								<Button onClick={openNewSpeakerDialog} size="lg" className="gap-2 text-xs md:text-sm h-9 md:h-10">
+								<Button
+									onClick={openNewSpeakerDialog}
+									size="lg"
+									className="gap-2 text-xs md:text-sm h-9 md:h-10"
+								>
 									<Plus className="h-3 w-3 md:h-4 md:w-4" />
 									Add First Speaker Profile
 								</Button>
@@ -507,7 +577,12 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 					>
 						<AnimatePresence mode="popLayout">
 							{speakerProfiles?.map((profile) => (
-								<motion.div key={profile.id} variants={item} layout exit={{ opacity: 0, scale: 0.95 }}>
+								<motion.div
+									key={profile.id}
+									variants={item}
+									layout
+									exit={{ opacity: 0, scale: 0.95 }}
+								>
 									<Card className="group relative overflow-hidden transition-all duration-200 border-border/60 hover:shadow-md h-full">
 										<CardContent className="p-4 flex flex-col gap-3 h-full">
 											{/* Header */}
@@ -515,8 +590,26 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 												<h4 className="text-sm font-semibold tracking-tight truncate flex-1 min-w-0">
 													{profile.name}
 												</h4>
-												{(canUpdate || canDelete) && (
+												{(canCreate || canUpdate || canDelete) && (
 													<div className="flex items-center gap-0.5 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-150">
+														{canCreate && (
+															<TooltipProvider>
+																<Tooltip>
+																	<TooltipTrigger asChild>
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			onClick={() => duplicateSpeaker(profile.id)}
+																			disabled={isDuplicatingSpeaker}
+																			className="h-7 w-7 text-muted-foreground hover:text-foreground"
+																		>
+																			<Copy className="h-3 w-3" />
+																		</Button>
+																	</TooltipTrigger>
+																	<TooltipContent>Duplicate</TooltipContent>
+																</Tooltip>
+															</TooltipProvider>
+														)}
 														{canUpdate && (
 															<TooltipProvider>
 																<Tooltip>
@@ -563,7 +656,8 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 													</Badge>
 												)}
 												<Badge variant="outline" className="text-[11px]">
-													{profile.speakers.length} speaker{profile.speakers.length !== 1 ? "s" : ""}
+													{profile.speakers.length} speaker
+													{profile.speakers.length !== 1 ? "s" : ""}
 												</Badge>
 											</div>
 
@@ -655,7 +749,11 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 									: "No episode profiles have been added to this space yet."}
 							</p>
 							{canCreate && (
-								<Button onClick={openNewEpisodeDialog} size="lg" className="gap-2 text-xs md:text-sm h-9 md:h-10">
+								<Button
+									onClick={openNewEpisodeDialog}
+									size="lg"
+									className="gap-2 text-xs md:text-sm h-9 md:h-10"
+								>
 									<Plus className="h-3 w-3 md:h-4 md:w-4" />
 									Add First Episode Profile
 								</Button>
@@ -674,7 +772,12 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 					>
 						<AnimatePresence mode="popLayout">
 							{episodeProfiles?.map((profile) => (
-								<motion.div key={profile.id} variants={item} layout exit={{ opacity: 0, scale: 0.95 }}>
+								<motion.div
+									key={profile.id}
+									variants={item}
+									layout
+									exit={{ opacity: 0, scale: 0.95 }}
+								>
 									<Card className="group relative overflow-hidden transition-all duration-200 border-border/60 hover:shadow-md h-full">
 										<CardContent className="p-4 flex flex-col gap-3 h-full">
 											{/* Header */}
@@ -682,8 +785,26 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 												<h4 className="text-sm font-semibold tracking-tight truncate flex-1 min-w-0">
 													{profile.name}
 												</h4>
-												{(canUpdate || canDelete) && (
+												{(canCreate || canUpdate || canDelete) && (
 													<div className="flex items-center gap-0.5 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-150">
+														{canCreate && (
+															<TooltipProvider>
+																<Tooltip>
+																	<TooltipTrigger asChild>
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			onClick={() => duplicateEpisode(profile.id)}
+																			disabled={isDuplicatingEpisode}
+																			className="h-7 w-7 text-muted-foreground hover:text-foreground"
+																		>
+																			<Copy className="h-3 w-3" />
+																		</Button>
+																	</TooltipTrigger>
+																	<TooltipContent>Duplicate</TooltipContent>
+																</Tooltip>
+															</TooltipProvider>
+														)}
 														{canUpdate && (
 															<TooltipProvider>
 																<Tooltip>
@@ -724,11 +845,12 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 
 											{/* Badges */}
 											<div className="flex items-center gap-2 flex-wrap">
-												{profile.speaker_profile_id && speakerProfileMap.has(profile.speaker_profile_id) && (
-													<Badge variant="secondary" className="text-[11px]">
-														{speakerProfileMap.get(profile.speaker_profile_id)}
-													</Badge>
-												)}
+												{profile.speaker_profile_id &&
+													speakerProfileMap.has(profile.speaker_profile_id) && (
+														<Badge variant="secondary" className="text-[11px]">
+															{speakerProfileMap.get(profile.speaker_profile_id)}
+														</Badge>
+													)}
 												<Badge variant="outline" className="text-[11px]">
 													{profile.num_segments} segment{profile.num_segments !== 1 ? "s" : ""}
 												</Badge>
@@ -810,9 +932,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 								<Label className="text-sm font-medium">TTS Provider *</Label>
 								<Select
 									value={speakerForm.tts_provider}
-									onValueChange={(val) =>
-										setSpeakerForm((p) => ({ ...p, tts_provider: val }))
-									}
+									onValueChange={(val) => setSpeakerForm((p) => ({ ...p, tts_provider: val }))}
 								>
 									<SelectTrigger>
 										<SelectValue placeholder="Select provider" />
@@ -844,7 +964,9 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 						{/* Speakers list */}
 						<div className="space-y-3">
 							<div className="flex items-center justify-between">
-								<Label className="text-sm font-medium">Speakers ({speakerForm.speakers.length}/4)</Label>
+								<Label className="text-sm font-medium">
+									Speakers ({speakerForm.speakers.length}/4)
+								</Label>
 								<Button
 									type="button"
 									variant="outline"
@@ -1080,7 +1202,9 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 							<Textarea
 								placeholder="Default briefing/instructions for episodes using this profile..."
 								value={episodeForm.default_briefing}
-								onChange={(e) => setEpisodeForm((p) => ({ ...p, default_briefing: e.target.value }))}
+								onChange={(e) =>
+									setEpisodeForm((p) => ({ ...p, default_briefing: e.target.value }))
+								}
 								className="min-h-[80px]"
 							/>
 						</div>
@@ -1102,7 +1226,9 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 							<Textarea
 								placeholder="Custom prompt for transcript generation (optional)..."
 								value={episodeForm.transcript_prompt}
-								onChange={(e) => setEpisodeForm((p) => ({ ...p, transcript_prompt: e.target.value }))}
+								onChange={(e) =>
+									setEpisodeForm((p) => ({ ...p, transcript_prompt: e.target.value }))
+								}
 								className="min-h-[60px]"
 							/>
 						</div>
@@ -1215,6 +1341,58 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			{/* ================================================================= */}
+			{/* Template Dialog                                                   */}
+			{/* ================================================================= */}
+			<Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+					<DialogHeader>
+						<DialogTitle>Use a Template</DialogTitle>
+						<DialogDescription>
+							Select a template to create a speaker profile and episode profile with pre-configured
+							settings.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="grid gap-3 grid-cols-1 sm:grid-cols-2 pt-2">
+						{PODCAST_TEMPLATES.map((template) => (
+							<Card
+								key={template.key}
+								className={cn(
+									"border-border/60 transition-all duration-200",
+									isApplyingTemplate
+										? "opacity-50 pointer-events-none"
+										: "cursor-pointer hover:border-primary/40 hover:shadow-md"
+								)}
+								onClick={() => !isApplyingTemplate && handleApplyTemplate(template)}
+							>
+								<CardContent className="p-4 flex flex-col gap-2">
+									<h4 className="text-sm font-semibold">{template.name}</h4>
+									<p className="text-xs text-muted-foreground">{template.description}</p>
+									<div className="flex items-center gap-2 flex-wrap pt-1">
+										<Badge variant="secondary" className="text-[11px]">
+											{template.speakerProfile.speakers.length} speaker
+											{template.speakerProfile.speakers.length !== 1 ? "s" : ""}
+										</Badge>
+										<Badge variant="outline" className="text-[11px]">
+											{template.episodeProfile.num_segments} segments
+										</Badge>
+										<Badge variant="outline" className="text-[11px]">
+											{template.episodeProfile.language}
+										</Badge>
+									</div>
+								</CardContent>
+							</Card>
+						))}
+					</div>
+					{isApplyingTemplate && (
+						<div className="flex items-center justify-center gap-2 py-2 text-muted-foreground">
+							<Spinner size="sm" />
+							<span className="text-sm">Creating profiles...</span>
+						</div>
+					)}
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

@@ -5,6 +5,7 @@ These routes support the podcast generation feature in new-chat.
 Frontend polls GET /podcasts/{podcast_id} to check status field.
 """
 
+import logging
 import os
 from pathlib import Path
 
@@ -26,6 +27,8 @@ from app.db import (
 from app.schemas import PodcastGenerateRequest, PodcastRead
 from app.users import current_active_user
 from app.utils.rbac import check_permission
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -144,6 +147,14 @@ async def delete_podcast(
             "You don't have permission to delete podcasts in this search space",
         )
 
+        # Clean up audio file from disk
+        file_path = db_podcast.file_location
+        if file_path and os.path.isfile(file_path):
+            try:
+                os.remove(file_path)
+            except OSError:
+                logger.warning("Failed to remove podcast file: %s", file_path)
+
         await session.delete(db_podcast)
         await session.commit()
         return {"message": "Podcast deleted successfully"}
@@ -197,6 +208,8 @@ async def generate_podcast(
             search_space_id=body.search_space_id,
             speaker_profile_id=body.speaker_profile_id,
             episode_profile_id=body.episode_profile_id,
+            source_content=body.source_content,
+            user_prompt=body.user_prompt,
         )
         session.add(podcast)
         await session.commit()
@@ -225,6 +238,94 @@ async def generate_podcast(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error starting podcast generation: {e!s}")
+
+
+@router.post("/podcasts/{podcast_id}/retry")
+async def retry_podcast(
+    podcast_id: int,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    """
+    Retry a failed podcast generation.
+
+    Re-dispatches the Celery task using the stored source_content.
+    Only works on podcasts with status FAILED.
+    """
+    try:
+        result = await session.execute(select(Podcast).filter(Podcast.id == podcast_id))
+        db_podcast = result.scalars().first()
+
+        if not db_podcast:
+            raise HTTPException(status_code=404, detail="Podcast not found")
+
+        await check_permission(
+            session,
+            user,
+            db_podcast.search_space_id,
+            Permission.PODCASTS_CREATE.value,
+            "You don't have permission to create podcasts in this search space",
+        )
+
+        if db_podcast.status != PodcastStatus.FAILED:
+            raise HTTPException(status_code=400, detail="Only failed podcasts can be retried")
+
+        if not db_podcast.source_content:
+            raise HTTPException(
+                status_code=400,
+                detail="Source content not available for retry",
+            )
+
+        from app.agents.new_chat.tools.podcast import (
+            get_generating_podcast_id,
+            set_generating_podcast,
+        )
+
+        generating_id = get_generating_podcast_id(db_podcast.search_space_id)
+        if generating_id:
+            return {
+                "status": "generating",
+                "podcast_id": generating_id,
+                "message": "A podcast is already being generated. Please wait for it to complete.",
+            }
+
+        db_podcast.status = PodcastStatus.PENDING
+        db_podcast.file_location = None
+        db_podcast.podcast_transcript = None
+        await session.commit()
+
+        from app.tasks.celery_tasks.podcast_tasks import (
+            generate_content_podcast_task,
+        )
+
+        generate_content_podcast_task.delay(
+            podcast_id=db_podcast.id,
+            source_content=db_podcast.source_content,
+            search_space_id=db_podcast.search_space_id,
+            user_prompt=db_podcast.user_prompt,
+            speaker_profile_id=db_podcast.speaker_profile_id,
+            episode_profile_id=db_podcast.episode_profile_id,
+        )
+
+        set_generating_podcast(db_podcast.search_space_id, db_podcast.id)
+
+        return {
+            "status": "pending",
+            "podcast_id": db_podcast.id,
+            "title": db_podcast.title,
+            "message": "Podcast retry started. This may take a few minutes.",
+        }
+    except HTTPException:
+        raise
+    except SQLAlchemyError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=500, detail="Database error occurred while retrying podcast"
+        ) from None
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error retrying podcast: {e!s}"
+        )
 
 
 @router.get("/podcasts/{podcast_id}/stream")
