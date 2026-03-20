@@ -118,8 +118,16 @@ cd surfsense_web && npx @biomejs/biome check --write .  # auto-fix
 - `components/<feature>/` — Componentes de funcionalidad específica
 
 ### i18n
+- `i18n/routing.ts` — Configuración de rutas i18n (`defaultLocale: "es"`, locales: en, es, pt, zh, hi)
 - `messages/{en,es,pt,zh,hi}.json` — Archivos de traducción con next-intl
 - **Siempre agregar strings en TODOS los 5 archivos de locale**
+- Namespaces de settings (todos usan `useTranslations("namespace")`):
+  - `llmRoleSettings` — Asignación de roles LLM/Image/TTS
+  - `modelConfigSettings` — CRUD de configuraciones de modelos LLM
+  - `imageModelSettings` — CRUD de modelos de generación de imágenes
+  - `podcastSettings` — Perfiles de locutores y episodios de podcast
+  - `roleSettings` — Gestión de roles y permisos RBAC
+  - `promptSettings` — Instrucciones del sistema personalizadas
 
 ## Patrones de arquitectura — Backend
 

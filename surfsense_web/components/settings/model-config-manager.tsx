@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { membersAtom, myAccessAtom } from "@/atoms/members/members-query.atoms";
 import {
@@ -82,6 +83,8 @@ function getInitials(name: string): string {
 }
 
 export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
+	const t = useTranslations("modelConfigSettings");
+
 	// Mutations
 	const { mutateAsync: createConfig, isPending: isCreating } = useAtomValue(
 		createNewLLMConfigMutationAtom
@@ -202,7 +205,7 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 					className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-9"
 				>
 					<RefreshCw className={cn("h-3 w-3 md:h-4 md:w-4", isLoading && "animate-spin")} />
-					Refresh
+					{t("refresh")}
 				</Button>
 				{canCreate && (
 					<Button
@@ -210,7 +213,7 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 						size="sm"
 						className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-9"
 					>
-						Add Configuration
+						{t("add_configuration")}
 					</Button>
 				)}
 			</div>
@@ -227,7 +230,7 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 						<Alert variant="destructive" className="py-3 md:py-4">
 							<AlertCircle className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 							<AlertDescription className="text-xs md:text-sm">
-								{fetchError?.message ?? "Failed to load configurations"}
+								{fetchError?.message ?? t("failed_load")}
 							</AlertDescription>
 						</Alert>
 					</motion.div>
@@ -240,8 +243,7 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 					<Alert className="bg-muted/50 py-3 md:py-4">
 						<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 						<AlertDescription className="text-xs md:text-sm">
-							You have <span className="font-medium">read-only</span> access to LLM configurations.
-							Contact a space owner to request additional permissions.
+							{t("read_only_notice")}
 						</AlertDescription>
 					</Alert>
 				</motion.div>
@@ -251,12 +253,14 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 					<Alert className="bg-muted/50 py-3 md:py-4">
 						<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 						<AlertDescription className="text-xs md:text-sm">
-							You can{" "}
-							{[canCreate && "create", canUpdate && "edit", canDelete && "delete"]
+							{[
+								canCreate && t("limited_create"),
+								canUpdate && t("limited_edit"),
+								canDelete && t("limited_delete"),
+							]
 								.filter(Boolean)
-								.join(" and ")}{" "}
-							configurations
-							{!canDelete && ", but cannot delete them"}.
+								.join(" & ")}{" "}
+							{!canDelete && t("limited_cannot_delete")}
 						</AlertDescription>
 					</Alert>
 				</motion.div>
@@ -268,10 +272,9 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 					<Alert className="bg-muted/50 py-3 md:py-4">
 						<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 						<AlertDescription className="text-xs md:text-sm">
-							<span className="font-medium">{globalConfigs.length} global configuration(s)</span>{" "}
-							available from your administrator. These are pre-configured and ready to use.{" "}
+							{t("global_configs_notice", { count: globalConfigs.length })}{" "}
 							<span className="text-muted-foreground">
-								Global configs: {globalConfigs.map((g) => g.name).join(", ")}
+								{t("global_configs_list", { names: globalConfigs.map((g) => g.name).join(", ") })}
 							</span>
 						</AlertDescription>
 					</Alert>
@@ -324,11 +327,9 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 										<Wand2 className="h-8 w-8 md:h-12 md:w-12 text-violet-600 dark:text-violet-400" />
 									</div>
 									<div className="space-y-2 mb-4 md:mb-6">
-										<h3 className="text-lg md:text-xl font-semibold">No Configurations Yet</h3>
+										<h3 className="text-lg md:text-xl font-semibold">{t("no_configs_title")}</h3>
 										<p className="text-xs md:text-sm text-muted-foreground max-w-sm">
-											{canCreate
-												? "Create your first AI configuration to customize how your agent responds"
-												: "No AI configurations have been added to this space yet. Contact a space owner to add one."}
+											{canCreate ? t("no_configs_desc_creator") : t("no_configs_desc_viewer")}
 										</p>
 									</div>
 									{canCreate && (
@@ -338,7 +339,7 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 											className="gap-2 text-xs md:text-sm h-9 md:h-10"
 										>
 											<Plus className="h-3 w-3 md:h-4 md:w-4" />
-											Create First Configuration
+											{t("create_first")}
 										</Button>
 									)}
 								</CardContent>
@@ -391,7 +392,7 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 																					<Edit3 className="h-3 w-3" />
 																				</Button>
 																			</TooltipTrigger>
-																			<TooltipContent>Edit</TooltipContent>
+																			<TooltipContent>{t("edit_tooltip")}</TooltipContent>
 																		</Tooltip>
 																	</TooltipProvider>
 																)}
@@ -408,7 +409,7 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 																					<Trash2 className="h-3 w-3" />
 																				</Button>
 																			</TooltipTrigger>
-																			<TooltipContent>Delete</TooltipContent>
+																			<TooltipContent>{t("delete_tooltip")}</TooltipContent>
 																		</Tooltip>
 																	</TooltipProvider>
 																)}
@@ -432,7 +433,7 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 																className="text-[10px] px-1.5 py-0.5 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-500/5"
 															>
 																<MessageSquareQuote className="h-2.5 w-2.5 mr-1" />
-																Citations
+																{t("citations")}
 															</Badge>
 														)}
 														{!config.use_default_system_instructions &&
@@ -442,7 +443,7 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 																	className="text-[10px] px-1.5 py-0.5 border-blue-500/30 text-blue-700 dark:text-blue-300 bg-blue-500/5"
 																>
 																	<FileText className="h-2.5 w-2.5 mr-1" />
-																	Custom
+																	{t("custom_prompt")}
 																</Badge>
 															)}
 													</div>
@@ -510,12 +511,10 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 				>
 					<DialogHeader>
 						<DialogTitle>
-							{editingConfig ? "Edit Configuration" : "Create New Configuration"}
+							{editingConfig ? t("edit_dialog_title") : t("create_dialog_title")}
 						</DialogTitle>
 						<DialogDescription>
-							{editingConfig
-								? "Update your AI model and prompt configuration"
-								: "Set up a new AI model with custom prompts and citation settings"}
+							{editingConfig ? t("edit_dialog_desc") : t("create_dialog_desc")}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -561,16 +560,14 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 					<AlertDialogHeader>
 						<AlertDialogTitle className="flex items-center gap-2">
 							<Trash2 className="h-5 w-5 text-destructive" />
-							Delete Configuration
+							{t("delete_title")}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete{" "}
-							<span className="font-semibold text-foreground">{configToDelete?.name}</span>? This
-							action cannot be undone.
+							{t("delete_confirm", { name: configToDelete?.name })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel disabled={isDeleting}>{t("cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={handleDelete}
 							disabled={isDeleting}
@@ -579,12 +576,12 @@ export function ModelConfigManager({ searchSpaceId }: ModelConfigManagerProps) {
 							{isDeleting ? (
 								<>
 									<Spinner size="sm" className="mr-2" />
-									Deleting
+									{t("deleting")}
 								</>
 							) : (
 								<>
 									<Trash2 className="mr-2 h-4 w-4" />
-									Delete
+									{t("delete")}
 								</>
 							)}
 						</AlertDialogAction>

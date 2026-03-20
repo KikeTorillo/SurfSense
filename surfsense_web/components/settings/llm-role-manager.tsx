@@ -15,6 +15,7 @@ import {
 	Shuffle,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -49,8 +50,6 @@ import { cn } from "@/lib/utils";
 const ROLE_DESCRIPTIONS = {
 	agent: {
 		icon: Bot,
-		title: "Agent LLM",
-		description: "Primary LLM for chat interactions and agent operations",
 		color: "text-blue-600 dark:text-blue-400",
 		bgColor: "bg-blue-500/10",
 		prefKey: "agent_llm_id" as const,
@@ -58,8 +57,6 @@ const ROLE_DESCRIPTIONS = {
 	},
 	document_summary: {
 		icon: FileText,
-		title: "Document Summary LLM",
-		description: "Handles document summarization and research synthesis",
 		color: "text-purple-600 dark:text-purple-400",
 		bgColor: "bg-purple-500/10",
 		prefKey: "document_summary_llm_id" as const,
@@ -67,8 +64,6 @@ const ROLE_DESCRIPTIONS = {
 	},
 	image_generation: {
 		icon: ImageIcon,
-		title: "Image Generation Model",
-		description: "Model used for AI image generation (DALL-E, GPT Image, etc.)",
 		color: "text-teal-600 dark:text-teal-400",
 		bgColor: "bg-teal-500/10",
 		prefKey: "image_generation_config_id" as const,
@@ -76,8 +71,6 @@ const ROLE_DESCRIPTIONS = {
 	},
 	tts: {
 		icon: Mic,
-		title: "TTS Model",
-		description: "Text-to-speech model for podcast audio generation",
 		color: "text-orange-600 dark:text-orange-400",
 		bgColor: "bg-orange-500/10",
 		prefKey: "tts_config_id" as const,
@@ -90,6 +83,8 @@ interface LLMRoleManagerProps {
 }
 
 export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
+	const t = useTranslations("llmRoleSettings");
+
 	// LLM configs
 	const {
 		data: newLLMConfigs = [],
@@ -160,7 +155,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 	const handleRoleAssignment = (prefKey: string, configId: string) => {
 		const newAssignments = {
 			...assignments,
-			[prefKey]: configId === "unassigned" ? "" : parseInt(configId),
+			[prefKey]: configId === "unassigned" ? "" : parseInt(configId, 10),
 		};
 
 		setAssignments(newAssignments);
@@ -185,7 +180,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 		setIsSaving(true);
 
 		const toNumericOrUndefined = (val: string | number) =>
-			typeof val === "string" ? (val ? parseInt(val) : undefined) : val;
+			typeof val === "string" ? (val ? parseInt(val, 10) : undefined) : val;
 
 		const numericAssignments = {
 			agent_llm_id: toNumericOrUndefined(assignments.agent_llm_id),
@@ -200,7 +195,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 		});
 
 		setHasChanges(false);
-		toast.success("Role assignments saved successfully!");
+		toast.success(t("save_success"));
 
 		setIsSaving(false);
 	};
@@ -275,7 +270,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 					className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-9"
 				>
 					<RefreshCw className="h-3 w-3 md:h-4 md:w-4" />
-					Refresh
+					{t("refresh")}
 				</Button>
 				{isAssignmentComplete && !isLoading && !hasError && (
 					<Badge
@@ -283,7 +278,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 						className="text-xs gap-1.5 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-500/5"
 					>
 						<CheckCircle className="h-3 w-3" />
-						All roles assigned
+						{t("all_roles_assigned")}
 					</Badge>
 				)}
 			</div>
@@ -300,9 +295,9 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 						<Alert variant="destructive" className="py-3 md:py-4">
 							<AlertCircle className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 							<AlertDescription className="text-xs md:text-sm">
-								{(configsError?.message ?? "Failed to load LLM configurations") ||
-									(preferencesError?.message ?? "Failed to load preferences") ||
-									(globalConfigsError?.message ?? "Failed to load global configurations")}
+								{(configsError?.message ?? t("failed_load_configs")) ||
+									(preferencesError?.message ?? t("failed_load_preferences")) ||
+									(globalConfigsError?.message ?? t("failed_load_global"))}
 							</AlertDescription>
 						</Alert>
 					</motion.div>
@@ -353,8 +348,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 				<Alert variant="destructive" className="py-3 md:py-4">
 					<AlertCircle className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 					<AlertDescription className="text-xs md:text-sm">
-						No configurations found. Please add at least one LLM provider or image model in the
-						respective settings tabs before assigning roles.
+						{t("no_configs_warning")}
 					</AlertDescription>
 				</Alert>
 			)}
@@ -419,9 +413,11 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 													<IconComponent className={cn("w-4 h-4", role.color)} />
 												</div>
 												<div className="min-w-0">
-													<h4 className="text-sm font-semibold tracking-tight">{role.title}</h4>
+													<h4 className="text-sm font-semibold tracking-tight">
+														{t(`${key}_title`)}
+													</h4>
 													<p className="text-[11px] text-muted-foreground/70 mt-0.5">
-														{role.description}
+														{t(`${key}_desc`)}
 													</p>
 												</div>
 											</div>
@@ -435,28 +431,28 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 										{/* Selector */}
 										<div className="space-y-1.5">
 											<Label className="text-xs font-medium text-muted-foreground">
-												Configuration
+												{t("configuration")}
 											</Label>
 											<Select
 												value={currentAssignment?.toString() || "unassigned"}
 												onValueChange={(value) => handleRoleAssignment(role.prefKey, value)}
 											>
 												<SelectTrigger className="w-full h-9 md:h-10 text-xs md:text-sm">
-													<SelectValue placeholder="Select a configuration" />
+													<SelectValue placeholder={t("select_configuration")} />
 												</SelectTrigger>
 												<SelectContent className="max-w-[calc(100vw-2rem)]">
 													<SelectItem
 														value="unassigned"
 														className="text-xs md:text-sm py-1.5 md:py-2"
 													>
-														<span className="text-muted-foreground">Unassigned</span>
+														<span className="text-muted-foreground">{t("unassigned")}</span>
 													</SelectItem>
 
 													{/* Global Configurations */}
 													{roleGlobalConfigs.length > 0 && (
 														<SelectGroup>
 															<SelectLabel className="text-[11px] md:text-xs font-semibold text-muted-foreground px-2 py-1 md:py-1.5">
-																Global Configurations
+																{t("global_configurations")}
 															</SelectLabel>
 															{roleGlobalConfigs.map((config) => {
 																const isAuto = "is_auto_mode" in config && config.is_auto_mode;
@@ -493,7 +489,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 																					variant="secondary"
 																					className="text-[8px] md:text-[9px] shrink-0 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
 																				>
-																					Recommended
+																					{t("recommended")}
 																				</Badge>
 																			)}
 																		</div>
@@ -507,7 +503,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 													{roleUserConfigs.length > 0 && (
 														<SelectGroup>
 															<SelectLabel className="text-[11px] md:text-xs font-semibold text-muted-foreground px-2 py-1 md:py-1.5">
-																Your Configurations
+																{t("your_configurations")}
 															</SelectLabel>
 															{roleUserConfigs.map((config) => (
 																<SelectItem
@@ -553,10 +549,10 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 														/>
 														<div className="min-w-0">
 															<p className="text-xs font-medium text-violet-700 dark:text-violet-300">
-																Auto Mode
+																{t("auto_mode")}
 															</p>
 															<p className="text-[10px] text-violet-600/70 dark:text-violet-400/70 mt-0.5">
-																Routes across all available providers
+																{t("auto_mode_desc")}
 															</p>
 														</div>
 													</div>
@@ -608,7 +604,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 						transition={{ duration: 0.2 }}
 						className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/50 p-3 md:p-4"
 					>
-						<p className="text-xs md:text-sm text-muted-foreground">You have unsaved changes</p>
+						<p className="text-xs md:text-sm text-muted-foreground">{t("unsaved_changes")}</p>
 						<div className="flex items-center gap-2">
 							<Button
 								variant="outline"
@@ -618,7 +614,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 								className="h-8 text-xs gap-1.5"
 							>
 								<RotateCcw className="w-3 h-3" />
-								Reset
+								{t("reset")}
 							</Button>
 							<Button
 								size="sm"
@@ -627,7 +623,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 								className="h-8 text-xs gap-1.5"
 							>
 								<Save className="w-3 h-3" />
-								{isSaving ? "Saving…" : "Save Changes"}
+								{isSaving ? t("saving") : t("save_changes")}
 							</Button>
 						</div>
 					</motion.div>

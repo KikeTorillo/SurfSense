@@ -21,6 +21,7 @@ import {
 	Users,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { myAccessAtom } from "@/atoms/members/members-query.atoms";
@@ -75,91 +76,91 @@ import { cn } from "@/lib/utils";
 
 const CATEGORY_CONFIG: Record<
 	string,
-	{ label: string; icon: LucideIcon; description: string; order: number }
+	{ labelKey: string; icon: LucideIcon; descKey: string; order: number }
 > = {
 	documents: {
-		label: "Documents",
+		labelKey: "cat_documents",
 		icon: FileText,
-		description: "Manage files, notes, and content",
+		descKey: "cat_documents_desc",
 		order: 1,
 	},
 	chats: {
-		label: "AI Chats",
+		labelKey: "cat_chats",
 		icon: MessageSquare,
-		description: "Create and manage AI conversations",
+		descKey: "cat_chats_desc",
 		order: 2,
 	},
 	comments: {
-		label: "Comments",
+		labelKey: "cat_comments",
 		icon: MessageCircle,
-		description: "Add annotations to documents",
+		descKey: "cat_comments_desc",
 		order: 3,
 	},
 	llm_configs: {
-		label: "AI Models",
+		labelKey: "cat_llm_configs",
 		icon: Bot,
-		description: "Configure AI model settings",
+		descKey: "cat_llm_configs_desc",
 		order: 4,
 	},
 	podcasts: {
-		label: "Podcasts",
+		labelKey: "cat_podcasts",
 		icon: Mic,
-		description: "Generate AI podcasts from content",
+		descKey: "cat_podcasts_desc",
 		order: 5,
 	},
 	connectors: {
-		label: "Integrations",
+		labelKey: "cat_connectors",
 		icon: Plug,
-		description: "Connect external data sources",
+		descKey: "cat_connectors_desc",
 		order: 6,
 	},
 	logs: {
-		label: "Activity Logs",
+		labelKey: "cat_logs",
 		icon: Logs,
-		description: "View and manage audit trail",
+		descKey: "cat_logs_desc",
 		order: 7,
 	},
 	members: {
-		label: "Team Members",
+		labelKey: "cat_members",
 		icon: Users,
-		description: "Manage team membership",
+		descKey: "cat_members_desc",
 		order: 8,
 	},
 	roles: {
-		label: "Roles",
+		labelKey: "cat_roles",
 		icon: Shield,
-		description: "Configure role permissions",
+		descKey: "cat_roles_desc",
 		order: 9,
 	},
 	settings: {
-		label: "Settings",
+		labelKey: "cat_settings",
 		icon: Settings,
-		description: "Manage search space settings",
+		descKey: "cat_settings_desc",
 		order: 10,
 	},
 	public_sharing: {
-		label: "Public Chat Sharing",
+		labelKey: "cat_public_sharing",
 		icon: Globe,
-		description: "Share chats publicly via links",
+		descKey: "cat_public_sharing_desc",
 		order: 11,
 	},
 };
 
 const ACTION_LABELS: Record<string, string> = {
-	create: "Create",
-	read: "Read",
-	update: "Update",
-	delete: "Delete",
-	invite: "Invite",
-	view: "View",
-	remove: "Remove",
-	manage_roles: "Manage Roles",
+	create: "action_create",
+	read: "action_read",
+	update: "action_update",
+	delete: "action_delete",
+	invite: "action_invite",
+	view: "action_view",
+	remove: "action_remove",
+	manage_roles: "action_manage_roles",
 };
 
 const ROLE_PRESETS = {
 	editor: {
-		name: "Editor",
-		description: "Create, read, and edit content. No delete or admin access.",
+		nameKey: "preset_editor_name",
+		descKey: "preset_editor_desc",
 		permissions: [
 			"documents:create",
 			"documents:read",
@@ -186,8 +187,8 @@ const ROLE_PRESETS = {
 		],
 	},
 	viewer: {
-		name: "Viewer",
-		description: "Read-only access with ability to add comments",
+		nameKey: "preset_viewer_name",
+		descKey: "preset_viewer_desc",
 		permissions: [
 			"documents:read",
 			"chats:read",
@@ -203,8 +204,8 @@ const ROLE_PRESETS = {
 		],
 	},
 	contributor: {
-		name: "Contributor",
-		description: "Can add and manage their own content",
+		nameKey: "preset_contributor_name",
+		descKey: "preset_contributor_desc",
 		permissions: [
 			"documents:create",
 			"documents:read",
@@ -332,6 +333,7 @@ function RolePermissionsDialog({
 	roleName: string;
 	children: React.ReactNode;
 }) {
+	const t = useTranslations("roleSettings");
 	const isFullAccess = permissions.includes("*");
 
 	const grouped: Record<string, string[]> = {};
@@ -356,11 +358,13 @@ function RolePermissionsDialog({
 			<DialogTrigger asChild>{children}</DialogTrigger>
 			<DialogContent className="w-[92vw] max-w-md p-0 gap-0">
 				<DialogHeader className="p-4 md:p-5">
-					<DialogTitle className="text-base">{roleName} — Permissions</DialogTitle>
+					<DialogTitle className="text-base">
+						{t("permissions_title", { name: roleName })}
+					</DialogTitle>
 					<DialogDescription className="text-xs">
 						{isFullAccess
-							? "This role has unrestricted access to all resources"
-							: `${permissions.length} permissions across ${categoryCount} categories`}
+							? t("full_access_desc")
+							: t("permissions_count", { count: permissions.length, categories: categoryCount })}
 					</DialogDescription>
 				</DialogHeader>
 				{isFullAccess ? (
@@ -369,10 +373,8 @@ function RolePermissionsDialog({
 							<Shield className="h-4 w-4 text-muted-foreground" />
 						</div>
 						<div>
-							<p className="text-sm font-medium">Full access</p>
-							<p className="text-xs text-muted-foreground">
-								All permissions granted across every category
-							</p>
+							<p className="text-sm font-medium">{t("full_access")}</p>
+							<p className="text-xs text-muted-foreground">{t("full_access_all")}</p>
 						</div>
 					</div>
 				) : (
@@ -381,7 +383,7 @@ function RolePermissionsDialog({
 							{sortedCategories.map((category) => {
 								const actions = grouped[category];
 								const config = CATEGORY_CONFIG[category] || {
-									label: category,
+									labelKey: category,
 									icon: FileText,
 								};
 								const IconComponent = config.icon;
@@ -392,7 +394,7 @@ function RolePermissionsDialog({
 									>
 										<div className="flex items-center gap-2 shrink-0">
 											<IconComponent className="h-3.5 w-3.5 text-muted-foreground" />
-											<span className="text-sm text-muted-foreground">{config.label}</span>
+											<span className="text-sm text-muted-foreground">{t(config.labelKey)}</span>
 										</div>
 										<div className="flex flex-wrap justify-end gap-1">
 											{actions.map((action) => (
@@ -400,7 +402,9 @@ function RolePermissionsDialog({
 													key={action}
 													className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[11px] font-medium"
 												>
-													{ACTION_LABELS[action] || action.replace(/_/g, " ")}
+													{ACTION_LABELS[action]
+														? t(ACTION_LABELS[action])
+														: action.replace(/_/g, " ")}
 												</span>
 											))}
 										</div>
@@ -416,17 +420,18 @@ function RolePermissionsDialog({
 }
 
 function PermissionsBadge({ permissions }: { permissions: string[] }) {
+	const t = useTranslations("roleSettings");
 	if (permissions.includes("*")) {
 		return (
 			<div className="px-2.5 py-1 rounded-md bg-muted/50 border border-border/60 text-muted-foreground">
-				<span className="text-xs font-medium whitespace-nowrap">Full access</span>
+				<span className="text-xs font-medium whitespace-nowrap">{t("full_access")}</span>
 			</div>
 		);
 	}
 	return (
 		<div className="px-2.5 py-1 rounded-md border border-border/60 bg-muted/50 text-muted-foreground">
 			<span className="text-xs font-medium whitespace-nowrap">
-				{permissions.length} permissions
+				{t("permissions_label", { count: permissions.length })}
 			</span>
 		</div>
 	);
@@ -463,6 +468,7 @@ function RolesContent({
 	canDelete: boolean;
 	canCreate: boolean;
 }) {
+	const t = useTranslations("roleSettings");
 	const [showCreateRole, setShowCreateRole] = useState(false);
 	const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
 
@@ -491,7 +497,7 @@ function RolesContent({
 						className="gap-2 bg-white text-black hover:bg-neutral-100 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
 					>
 						<Plus className="h-4 w-4" />
-						Create Custom Role
+						{t("create_custom_role")}
 					</Button>
 				</div>
 			)}
@@ -533,12 +539,12 @@ function RolesContent({
 										<span className="font-medium text-sm">{role.name}</span>
 										{role.is_system_role && (
 											<span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-												System
+												{t("system_badge")}
 											</span>
 										)}
 										{role.is_default && (
 											<span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-												Default
+												{t("default_badge")}
 											</span>
 										)}
 									</div>
@@ -570,7 +576,7 @@ function RolesContent({
 												{canUpdate && (
 													<DropdownMenuItem onClick={() => setEditingRoleId(role.id)}>
 														<Edit2 className="h-4 w-4 mr-2" />
-														Edit Role
+														{t("edit_role")}
 													</DropdownMenuItem>
 												)}
 												{canDelete && (
@@ -580,24 +586,23 @@ function RolesContent({
 															<AlertDialogTrigger asChild>
 																<DropdownMenuItem onSelect={(e) => e.preventDefault()}>
 																	<Trash2 className="h-4 w-4 mr-2" />
-																	Delete Role
+																	{t("delete_role")}
 																</DropdownMenuItem>
 															</AlertDialogTrigger>
 															<AlertDialogContent>
 																<AlertDialogHeader>
-																	<AlertDialogTitle>Delete role?</AlertDialogTitle>
+																	<AlertDialogTitle>{t("delete_confirm_title")}</AlertDialogTitle>
 																	<AlertDialogDescription>
-																		This will permanently delete the &quot;{role.name}&quot; role.
-																		Members with this role will lose their permissions.
+																		{t("delete_confirm_desc", { name: role.name })}
 																	</AlertDialogDescription>
 																</AlertDialogHeader>
 																<AlertDialogFooter>
-																	<AlertDialogCancel>Cancel</AlertDialogCancel>
+																	<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
 																	<AlertDialogAction
 																		onClick={() => onDeleteRole(role.id)}
 																		className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 																	>
-																		Delete
+																		{t("delete")}
 																	</AlertDialogAction>
 																</AlertDialogFooter>
 															</AlertDialogContent>
@@ -630,6 +635,7 @@ function PermissionsEditor({
 	onTogglePermission: (perm: string) => void;
 	onToggleCategory: (category: string) => void;
 }) {
+	const t = useTranslations("roleSettings");
 	const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
 	const sortedCategories = useMemo(() => {
@@ -663,7 +669,7 @@ function PermissionsEditor({
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
 				<Label className="text-sm font-medium">
-					Permissions ({selectedPermissions.length} selected)
+					{t("permissions_selected", { count: selectedPermissions.length })}
 				</Label>
 				<Button
 					type="button"
@@ -676,16 +682,18 @@ function PermissionsEditor({
 						)
 					}
 				>
-					{expandedCategories.length === sortedCategories.length ? "Collapse All" : "Expand All"}
+					{expandedCategories.length === sortedCategories.length
+						? t("collapse_all")
+						: t("expand_all")}
 				</Button>
 			</div>
 
 			<div className="space-y-1.5">
 				{sortedCategories.map((category) => {
 					const config = CATEGORY_CONFIG[category] || {
-						label: category,
+						labelKey: category,
 						icon: FileText,
-						description: "",
+						descKey: "",
 						order: 99,
 					};
 					const IconComponent = config.icon;
@@ -695,21 +703,14 @@ function PermissionsEditor({
 
 					return (
 						<div key={category} className="rounded-lg border border-border/60 overflow-hidden">
-							<div
-								role="button"
-								tabIndex={0}
+							<button
+								type="button"
 								className="w-full flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-muted/40 transition-colors"
 								onClick={() => toggleCategoryExpanded(category)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" || e.key === " ") {
-										e.preventDefault();
-										toggleCategoryExpanded(category);
-									}
-								}}
 							>
 								<div className="flex items-center gap-2.5">
 									<IconComponent className="h-4 w-4 text-muted-foreground shrink-0" />
-									<span className="font-medium text-sm">{config.label}</span>
+									<span className="font-medium text-sm">{t(config.labelKey)}</span>
 									<span className="text-[11px] text-muted-foreground tabular-nums">
 										{stats.selected}/{stats.total}
 									</span>
@@ -719,7 +720,7 @@ function PermissionsEditor({
 										checked={stats.allSelected}
 										onCheckedChange={() => onToggleCategory(category)}
 										onClick={(e) => e.stopPropagation()}
-										aria-label={`Select all ${config.label} permissions`}
+										aria-label={`Select all ${t(config.labelKey)} permissions`}
 									/>
 									<motion.div
 										animate={{ rotate: isExpanded ? 180 : 0 }}
@@ -742,7 +743,7 @@ function PermissionsEditor({
 										</svg>
 									</motion.div>
 								</div>
-							</div>
+							</button>
 
 							{isExpanded && (
 								<motion.div
@@ -755,25 +756,20 @@ function PermissionsEditor({
 									<div className="p-2 space-y-0.5">
 										{perms.map((perm) => {
 											const action = perm.value.split(":")[1];
-											const actionLabel = ACTION_LABELS[action] || action.replace(/_/g, " ");
+											const actionLabel = ACTION_LABELS[action]
+												? t(ACTION_LABELS[action])
+												: action.replace(/_/g, " ");
 											const isSelected = selectedPermissions.includes(perm.value);
 
 											return (
-												<div
+												<button
+													type="button"
 													key={perm.value}
-													role="button"
-													tabIndex={0}
 													className={cn(
 														"w-full flex items-center justify-between gap-3 px-2.5 py-2 rounded-md cursor-pointer transition-colors",
 														isSelected ? "bg-muted/60 hover:bg-muted/80" : "hover:bg-muted/40"
 													)}
 													onClick={() => onTogglePermission(perm.value)}
-													onKeyDown={(e) => {
-														if (e.key === "Enter" || e.key === " ") {
-															e.preventDefault();
-															onTogglePermission(perm.value);
-														}
-													}}
 												>
 													<div className="flex-1 min-w-0 text-left">
 														<span className="text-sm font-medium">{actionLabel}</span>
@@ -787,7 +783,7 @@ function PermissionsEditor({
 														onClick={(e) => e.stopPropagation()}
 														className="shrink-0"
 													/>
-												</div>
+												</button>
 											);
 										})}
 									</div>
@@ -814,6 +810,7 @@ function CreateRoleDialog({
 	groupedPermissions: Record<string, PermissionWithDescription[]>;
 	onCreateRole: (data: CreateRoleRequest["data"]) => Promise<Role>;
 }) {
+	const t = useTranslations("roleSettings");
 	const [creating, setCreating] = useState(false);
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -830,7 +827,7 @@ function CreateRoleDialog({
 
 	const handleCreate = async () => {
 		if (!name.trim()) {
-			toast.error("Please enter a role name");
+			toast.error(t("name_required"));
 			return;
 		}
 
@@ -875,27 +872,27 @@ function CreateRoleDialog({
 			const preset = ROLE_PRESETS[presetKey];
 			setSelectedPermissions(preset.permissions);
 			if (!name.trim()) {
-				setName(preset.name);
-				setDescription(preset.description);
+				setName(t(preset.nameKey));
+				setDescription(t(preset.descKey));
 			}
-			toast.success(`Applied ${preset.name} preset`);
+			toast.success(t("preset_applied", { name: t(preset.nameKey) }));
 		},
-		[name]
+		[name, t]
 	);
 
 	return (
 		<Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : handleClose())}>
 			<DialogContent className="!flex !flex-col w-[92vw] max-w-[92vw] sm:max-w-2xl p-0 gap-0 max-h-[85vh] overflow-hidden">
 				<DialogHeader className="px-5 pt-5 pb-4 shrink-0">
-					<DialogTitle className="text-lg">Create Custom Role</DialogTitle>
+					<DialogTitle className="text-lg">{t("create_dialog_title")}</DialogTitle>
 					<DialogDescription className="text-sm text-muted-foreground">
-						Define permissions for a new role in this search space
+						{t("create_dialog_desc")}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="flex-1 min-h-0 overflow-y-auto">
 					<div className="px-5 py-5 space-y-5">
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Start from a template</Label>
+							<Label className="text-sm font-medium">{t("start_from_template")}</Label>
 							<div className="grid grid-cols-3 gap-2">
 								{Object.entries(ROLE_PRESETS).map(([key, preset]) => (
 									<button
@@ -910,9 +907,9 @@ function CreateRoleDialog({
 												: "border-border/60"
 										)}
 									>
-										<span className="font-medium text-sm">{preset.name}</span>
+										<span className="font-medium text-sm">{t(preset.nameKey)}</span>
 										<p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-											{preset.description}
+											{t(preset.descKey)}
 										</p>
 									</button>
 								))}
@@ -921,19 +918,19 @@ function CreateRoleDialog({
 
 						<div className="grid grid-cols-2 gap-3">
 							<div className="space-y-1.5">
-								<Label htmlFor="role-name">Role Name *</Label>
+								<Label htmlFor="role-name">{t("role_name_label")}</Label>
 								<Input
 									id="role-name"
-									placeholder="e.g., Content Manager"
+									placeholder={t("name_placeholder")}
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 								/>
 							</div>
 							<div className="space-y-1.5">
-								<Label htmlFor="role-description">Description</Label>
+								<Label htmlFor="role-description">{t("description_label")}</Label>
 								<Input
 									id="role-description"
-									placeholder="Brief description of this role"
+									placeholder={t("description_placeholder")}
 									value={description}
 									onChange={(e) => setDescription(e.target.value)}
 								/>
@@ -948,11 +945,9 @@ function CreateRoleDialog({
 							/>
 							<div className="flex-1">
 								<Label htmlFor="is-default" className="cursor-pointer font-medium text-sm">
-									Set as default role
+									{t("set_default")}
 								</Label>
-								<p className="text-xs text-muted-foreground">
-									New members without a specific role will be assigned this role
-								</p>
+								<p className="text-xs text-muted-foreground">{t("set_default_desc")}</p>
 							</div>
 						</div>
 
@@ -966,16 +961,16 @@ function CreateRoleDialog({
 				</div>
 				<div className="flex items-center justify-end gap-3 px-5 py-3 shrink-0">
 					<Button variant="outline" onClick={handleClose}>
-						Cancel
+						{t("cancel")}
 					</Button>
 					<Button onClick={handleCreate} disabled={creating || !name.trim()}>
 						{creating ? (
 							<>
 								<Spinner size="sm" className="mr-2" />
-								Creating
+								{t("creating")}
 							</>
 						) : (
-							"Create Role"
+							t("create_role")
 						)}
 					</Button>
 				</div>
@@ -1007,6 +1002,7 @@ function EditRoleDialog({
 		}
 	) => Promise<Role>;
 }) {
+	const t = useTranslations("roleSettings");
 	const [saving, setSaving] = useState(false);
 	const [name, setName] = useState(role.name);
 	const [description, setDescription] = useState(role.description || "");
@@ -1024,7 +1020,7 @@ function EditRoleDialog({
 
 	const handleSave = async () => {
 		if (!name.trim()) {
-			toast.error("Please enter a role name");
+			toast.error(t("name_required"));
 			return;
 		}
 
@@ -1036,11 +1032,11 @@ function EditRoleDialog({
 				permissions: selectedPermissions,
 				is_default: isDefault,
 			});
-			toast.success("Role updated successfully");
+			toast.success(t("update_success"));
 			onOpenChange(false);
 		} catch (error) {
 			console.error("Failed to update role:", error);
-			toast.error("Failed to update role");
+			toast.error(t("update_error"));
 		} finally {
 			setSaving(false);
 		}
@@ -1070,28 +1066,28 @@ function EditRoleDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="!flex !flex-col w-[92vw] max-w-[92vw] sm:max-w-2xl p-0 gap-0 max-h-[85vh] overflow-hidden">
 				<DialogHeader className="px-5 py-4 shrink-0">
-					<DialogTitle className="text-base">Edit Role</DialogTitle>
+					<DialogTitle className="text-base">{t("edit_dialog_title")}</DialogTitle>
 					<DialogDescription className="text-xs">
-						Modify permissions for &quot;{role.name}&quot;
+						{t("edit_dialog_desc", { name: role.name })}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="flex-1 min-h-0 overflow-y-auto">
 					<div className="px-5 py-5 space-y-5">
 						<div className="grid grid-cols-2 gap-3">
 							<div className="space-y-1.5">
-								<Label htmlFor="edit-role-name">Role Name *</Label>
+								<Label htmlFor="edit-role-name">{t("role_name_label")}</Label>
 								<Input
 									id="edit-role-name"
-									placeholder="e.g., Content Manager"
+									placeholder={t("name_placeholder")}
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 								/>
 							</div>
 							<div className="space-y-1.5">
-								<Label htmlFor="edit-role-description">Description</Label>
+								<Label htmlFor="edit-role-description">{t("description_label")}</Label>
 								<Input
 									id="edit-role-description"
-									placeholder="Brief description of this role"
+									placeholder={t("description_placeholder")}
 									value={description}
 									onChange={(e) => setDescription(e.target.value)}
 								/>
@@ -1106,11 +1102,9 @@ function EditRoleDialog({
 							/>
 							<div className="flex-1">
 								<Label htmlFor="edit-is-default" className="cursor-pointer font-medium text-sm">
-									Set as default role
+									{t("set_default")}
 								</Label>
-								<p className="text-xs text-muted-foreground">
-									New members without a specific role will be assigned this role
-								</p>
+								<p className="text-xs text-muted-foreground">{t("set_default_desc")}</p>
 							</div>
 						</div>
 
@@ -1124,16 +1118,16 @@ function EditRoleDialog({
 				</div>
 				<div className="flex items-center justify-end gap-3 px-5 py-3 border-t shrink-0">
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
-						Cancel
+						{t("cancel")}
 					</Button>
 					<Button onClick={handleSave} disabled={saving || !name.trim()}>
 						{saving ? (
 							<>
 								<Spinner size="sm" className="mr-2" />
-								Saving...
+								{t("saving")}
 							</>
 						) : (
-							"Save Changes"
+							t("save_changes")
 						)}
 					</Button>
 				</div>

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -101,6 +102,8 @@ function getInitials(name: string): string {
 }
 
 export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
+	const t = useTranslations("imageModelSettings");
+
 	// Image gen config atoms
 	const {
 		mutateAsync: createConfig,
@@ -182,7 +185,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 	});
 	const [modelComboboxOpen, setModelComboboxOpen] = useState(false);
 
-	const resetForm = () => {
+	const resetForm = useCallback(() => {
 		setFormData({
 			name: "",
 			description: "",
@@ -193,11 +196,11 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 			api_base: "",
 			api_version: "",
 		});
-	};
+	}, []);
 
 	const handleFormSubmit = useCallback(async () => {
 		if (!formData.name || !formData.provider || !formData.model_name || !formData.api_key) {
-			toast.error("Please fill in all required fields");
+			toast.error(t("required_fields_error"));
 			return;
 		}
 		try {
@@ -207,7 +210,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 					data: {
 						name: formData.name,
 						description: formData.description || undefined,
-						provider: formData.provider as any,
+						provider: formData.provider as ImageGenerationConfig["provider"],
 						custom_provider: formData.custom_provider || undefined,
 						model_name: formData.model_name,
 						api_key: formData.api_key,
@@ -219,7 +222,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 				const result = await createConfig({
 					name: formData.name,
 					description: formData.description || undefined,
-					provider: formData.provider as any,
+					provider: formData.provider as ImageGenerationConfig["provider"],
 					custom_provider: formData.custom_provider || undefined,
 					model_name: formData.model_name,
 					api_key: formData.api_key,
@@ -241,7 +244,16 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 		} catch {
 			// Error handled by mutation
 		}
-	}, [editingConfig, formData, searchSpaceId, createConfig, updateConfig, updatePreferences]);
+	}, [
+		editingConfig,
+		formData,
+		searchSpaceId,
+		createConfig,
+		updateConfig,
+		updatePreferences,
+		t,
+		resetForm,
+	]);
 
 	const handleDelete = async () => {
 		if (!configToDelete) return;
@@ -289,14 +301,14 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 					className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-9"
 				>
 					<RefreshCw className={cn("h-3 w-3 md:h-4 md:w-4", configsLoading && "animate-spin")} />
-					Refresh
+					{t("refresh")}
 				</Button>
 				{canCreate && (
 					<Button
 						onClick={openNewDialog}
 						className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-9"
 					>
-						Add Image Model
+						{t("add_image_model")}
 					</Button>
 				)}
 			</div>
@@ -324,8 +336,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 					<Alert className="bg-muted/50 py-3 md:py-4">
 						<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 						<AlertDescription className="text-xs md:text-sm">
-							You have <span className="font-medium">read-only</span> access to image generation
-							configurations. Contact a space owner to request additional permissions.
+							{t("read_only_notice")}
 						</AlertDescription>
 					</Alert>
 				</motion.div>
@@ -335,12 +346,10 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 					<Alert className="bg-muted/50 py-3 md:py-4">
 						<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 						<AlertDescription className="text-xs md:text-sm">
-							You can{" "}
-							{[canCreate && "create and edit", canDelete && "delete"]
+							{[canCreate && t("limited_create"), canDelete && t("limited_delete")]
 								.filter(Boolean)
-								.join(" and ")}{" "}
-							image model configurations
-							{!canDelete && ", but cannot delete them"}.
+								.join(" & ")}{" "}
+							{!canDelete && t("limited_cannot_delete")}
 						</AlertDescription>
 					</Alert>
 				</motion.div>
@@ -351,11 +360,9 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 				<Alert className="bg-muted/50 py-3">
 					<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 					<AlertDescription className="text-xs md:text-sm">
-						<span className="font-medium">
-							{globalConfigs.filter((g) => !("is_auto_mode" in g && g.is_auto_mode)).length} global
-							image model(s)
-						</span>{" "}
-						available from your administrator.
+						{t("global_info", {
+							count: globalConfigs.filter((g) => !("is_auto_mode" in g && g.is_auto_mode)).length,
+						})}
 					</AlertDescription>
 				</Alert>
 			)}
@@ -410,11 +417,9 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 								<div className="rounded-full bg-gradient-to-br from-teal-500/10 to-cyan-500/10 p-4 md:p-6 mb-4">
 									<Wand2 className="h-8 w-8 md:h-12 md:w-12 text-teal-600 dark:text-teal-400" />
 								</div>
-								<h3 className="text-lg font-semibold mb-2">No Image Models Yet</h3>
+								<h3 className="text-lg font-semibold mb-2">{t("no_models_title")}</h3>
 								<p className="text-xs md:text-sm text-muted-foreground max-w-sm mb-4">
-									{canCreate
-										? "Add your own image generation model (DALL-E 3, GPT Image 1, etc.)"
-										: "No image models have been added to this space yet. Contact a space owner to add one."}
+									{canCreate ? t("no_models_desc_creator") : t("no_models_desc_viewer")}
 								</p>
 								{canCreate && (
 									<Button
@@ -423,7 +428,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 										className="gap-2 text-xs md:text-sm h-9 md:h-10"
 									>
 										<Plus className="h-3 w-3 md:h-4 md:w-4" />
-										Add First Image Model
+										{t("add_first")}
 									</Button>
 								)}
 							</CardContent>
@@ -475,7 +480,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 																					<Edit3 className="h-3 w-3" />
 																				</Button>
 																			</TooltipTrigger>
-																			<TooltipContent>Edit</TooltipContent>
+																			<TooltipContent>{t("edit_tooltip")}</TooltipContent>
 																		</Tooltip>
 																	</TooltipProvider>
 																)}
@@ -492,7 +497,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 																					<Trash2 className="h-3 w-3" />
 																				</Button>
 																			</TooltipTrigger>
-																			<TooltipContent>Delete</TooltipContent>
+																			<TooltipContent>{t("delete_tooltip")}</TooltipContent>
 																		</Tooltip>
 																	</TooltipProvider>
 																)}
@@ -579,20 +584,20 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 					onOpenAutoFocus={(e) => e.preventDefault()}
 				>
 					<DialogHeader>
-						<DialogTitle>{editingConfig ? "Edit Image Model" : "Add Image Model"}</DialogTitle>
+						<DialogTitle>
+							{editingConfig ? t("edit_dialog_title") : t("add_dialog_title")}
+						</DialogTitle>
 						<DialogDescription>
-							{editingConfig
-								? "Update your image generation model"
-								: "Configure a new image generation model (DALL-E 3, GPT Image 1, etc.)"}
+							{editingConfig ? t("edit_dialog_desc") : t("add_dialog_desc")}
 						</DialogDescription>
 					</DialogHeader>
 
 					<div className="space-y-4 pt-2">
 						{/* Name */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Name *</Label>
+							<Label className="text-sm font-medium">{t("name_label")}</Label>
 							<Input
-								placeholder="e.g., My DALL-E 3"
+								placeholder={t("name_placeholder")}
 								value={formData.name}
 								onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
 							/>
@@ -600,9 +605,9 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 
 						{/* Description */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Description</Label>
+							<Label className="text-sm font-medium">{t("description_label")}</Label>
 							<Input
-								placeholder="Optional description"
+								placeholder={t("description_placeholder")}
 								value={formData.description}
 								onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
 							/>
@@ -612,7 +617,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 
 						{/* Provider */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Provider *</Label>
+							<Label className="text-sm font-medium">{t("provider_label")}</Label>
 							<Select
 								value={formData.provider}
 								onValueChange={(val) =>
@@ -620,7 +625,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 								}
 							>
 								<SelectTrigger>
-									<SelectValue placeholder="Select a provider" />
+									<SelectValue placeholder={t("select_provider")} />
 								</SelectTrigger>
 								<SelectContent>
 									{IMAGE_GEN_PROVIDERS.map((p) => (
@@ -637,7 +642,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 
 						{/* Model Name */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Model Name *</Label>
+							<Label className="text-sm font-medium">{t("model_name_label")}</Label>
 							{suggestedModels.length > 0 ? (
 								<Popover open={modelComboboxOpen} onOpenChange={setModelComboboxOpen}>
 									<PopoverTrigger asChild>
@@ -646,7 +651,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 											role="combobox"
 											className="w-full justify-between font-normal"
 										>
-											{formData.model_name || "Select or type a model..."}
+											{formData.model_name || t("select_or_type_model")}
 											<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 										</Button>
 									</PopoverTrigger>
@@ -660,7 +665,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 											<CommandList>
 												<CommandEmpty>
 													<span className="text-xs text-muted-foreground">
-														Type a custom model name
+														{t("type_custom_model")}
 													</span>
 												</CommandEmpty>
 												<CommandGroup>
@@ -690,7 +695,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 								</Popover>
 							) : (
 								<Input
-									placeholder="e.g., dall-e-3"
+									placeholder={t("model_placeholder")}
 									value={formData.model_name}
 									onChange={(e) => setFormData((p) => ({ ...p, model_name: e.target.value }))}
 								/>
@@ -700,7 +705,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 						{/* API Key */}
 						<div className="space-y-2">
 							<Label className="text-sm font-medium flex items-center gap-1.5">
-								<Key className="h-3.5 w-3.5" /> API Key *
+								<Key className="h-3.5 w-3.5" /> {t("api_key_label")}
 							</Label>
 							<Input
 								type="password"
@@ -712,7 +717,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 
 						{/* API Base (optional) */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">API Base URL</Label>
+							<Label className="text-sm font-medium">{t("api_base_label")}</Label>
 							<Input
 								placeholder={selectedProvider?.apiBase || "Optional"}
 								value={formData.api_base}
@@ -723,7 +728,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 						{/* API Version (Azure) */}
 						{formData.provider === "AZURE_OPENAI" && (
 							<div className="space-y-2">
-								<Label className="text-sm font-medium">API Version (Azure)</Label>
+								<Label className="text-sm font-medium">{t("api_version_label")}</Label>
 								<Input
 									placeholder="2024-02-15-preview"
 									value={formData.api_version}
@@ -743,7 +748,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 									resetForm();
 								}}
 							>
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button
 								className="flex-1"
@@ -757,7 +762,7 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 								}
 							>
 								{isSubmitting ? <Spinner size="sm" className="mr-2" /> : null}
-								{editingConfig ? "Save Changes" : "Create & Use"}
+								{editingConfig ? t("save_changes") : t("create_and_use")}
 							</Button>
 						</div>
 					</div>
@@ -773,15 +778,14 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 					<AlertDialogHeader>
 						<AlertDialogTitle className="flex items-center gap-2">
 							<Trash2 className="h-5 w-5 text-destructive" />
-							Delete Image Model
+							{t("delete_title")}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete{" "}
-							<span className="font-semibold text-foreground">{configToDelete?.name}</span>?
+							{t("delete_confirm", { name: configToDelete?.name })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel disabled={isDeleting}>{t("cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={handleDelete}
 							disabled={isDeleting}
@@ -790,12 +794,12 @@ export function ImageModelManager({ searchSpaceId }: ImageModelManagerProps) {
 							{isDeleting ? (
 								<>
 									<Spinner size="sm" className="mr-2" />
-									Deleting
+									{t("deleting")}
 								</>
 							) : (
 								<>
 									<Trash2 className="mr-2 h-4 w-4" />
-									Delete
+									{t("delete")}
 								</>
 							)}
 						</AlertDialogAction>

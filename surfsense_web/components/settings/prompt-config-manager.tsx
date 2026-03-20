@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Info, RotateCcw, Save } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -19,6 +20,8 @@ interface PromptConfigManagerProps {
 }
 
 export function PromptConfigManager({ searchSpaceId }: PromptConfigManagerProps) {
+	const t = useTranslations("promptSettings");
+
 	const {
 		data: searchSpace,
 		isLoading: loading,
@@ -72,12 +75,12 @@ export function PromptConfigManager({ searchSpaceId }: PromptConfigManagerProps)
 				throw new Error(errorData.detail || "Failed to save system instructions");
 			}
 
-			toast.success("System instructions saved successfully");
+			toast.success(t("save_success"));
 			setHasChanges(false);
 			await fetchSearchSpace();
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error("Error saving system instructions:", error);
-			toast.error(error.message || "Failed to save system instructions");
+			toast.error(error instanceof Error ? error.message : t("save_error"));
 		} finally {
 			setSaving(false);
 		}
@@ -116,28 +119,20 @@ export function PromptConfigManager({ searchSpaceId }: PromptConfigManagerProps)
 			>
 				<AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-amber-600 dark:text-amber-500 shrink-0" />
 				<AlertDescription className="text-amber-800 dark:text-amber-300 text-xs md:text-sm">
-					<span className="font-semibold">Work in Progress:</span> This functionality is currently
-					under development and not yet connected to the backend. Your instructions will be saved
-					but won't affect AI behavior until the feature is fully implemented.
+					<span className="font-semibold">{t("wip_title")}</span> {t("wip_desc")}
 				</AlertDescription>
 			</Alert>
 
 			<Alert className="bg-muted/50 py-3 md:py-4">
 				<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
-				<AlertDescription className="text-xs md:text-sm">
-					System instructions apply to all AI interactions in this search space. They guide how the
-					AI responds, its tone, focus areas, and behavior patterns.
-				</AlertDescription>
+				<AlertDescription className="text-xs md:text-sm">{t("info_desc")}</AlertDescription>
 			</Alert>
 
 			{/* System Instructions Card */}
 			<Card>
 				<CardHeader className="px-3 md:px-6 pt-3 md:pt-6 pb-2 md:pb-3">
-					<CardTitle className="text-base md:text-lg">Custom System Instructions</CardTitle>
-					<CardDescription className="text-xs md:text-sm">
-						Provide specific guidelines for how you want the AI to respond. These instructions will
-						be applied to all answers in this search space.
-					</CardDescription>
+					<CardTitle className="text-base md:text-lg">{t("card_title")}</CardTitle>
+					<CardDescription className="text-xs md:text-sm">{t("card_desc")}</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-3 md:space-y-4 px-3 md:px-6 pb-3 md:pb-6">
 					<div className="space-y-1.5 md:space-y-2">
@@ -145,11 +140,11 @@ export function PromptConfigManager({ searchSpaceId }: PromptConfigManagerProps)
 							htmlFor="custom-instructions-settings"
 							className="text-sm md:text-base font-medium"
 						>
-							Your Instructions
+							{t("instructions_label")}
 						</Label>
 						<Textarea
 							id="custom-instructions-settings"
-							placeholder="E.g., Always provide practical examples, be concise, focus on technical details, use simple language, respond in a specific format..."
+							placeholder={t("instructions_placeholder")}
 							value={customInstructions}
 							onChange={(e) => setCustomInstructions(e.target.value)}
 							rows={10}
@@ -157,7 +152,7 @@ export function PromptConfigManager({ searchSpaceId }: PromptConfigManagerProps)
 						/>
 						<div className="flex items-center justify-between">
 							<p className="text-[10px] md:text-xs text-muted-foreground">
-								{customInstructions.length} characters
+								{t("characters_count", { count: customInstructions.length })}
 							</p>
 							{customInstructions.length > 0 && (
 								<Button
@@ -166,7 +161,7 @@ export function PromptConfigManager({ searchSpaceId }: PromptConfigManagerProps)
 									onClick={() => setCustomInstructions("")}
 									className="h-auto py-0.5 md:py-1 px-1.5 md:px-2 text-[10px] md:text-xs"
 								>
-									Clear
+									{t("clear")}
 								</Button>
 							)}
 						</div>
@@ -176,7 +171,7 @@ export function PromptConfigManager({ searchSpaceId }: PromptConfigManagerProps)
 						<Alert className="py-2 md:py-3">
 							<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 							<AlertDescription className="text-xs md:text-sm">
-								No system instructions are currently set. The AI will use default behavior.
+								{t("no_instructions")}
 							</AlertDescription>
 						</Alert>
 					)}
@@ -192,7 +187,7 @@ export function PromptConfigManager({ searchSpaceId }: PromptConfigManagerProps)
 					className="flex items-center gap-2 text-xs md:text-sm h-9 md:h-10"
 				>
 					<RotateCcw className="h-3.5 w-3.5 md:h-4 md:w-4" />
-					Reset Changes
+					{t("reset_changes")}
 				</Button>
 				<Button
 					onClick={handleSave}
@@ -200,7 +195,7 @@ export function PromptConfigManager({ searchSpaceId }: PromptConfigManagerProps)
 					className="flex items-center gap-2 text-xs md:text-sm h-9 md:h-10"
 				>
 					<Save className="h-3.5 w-3.5 md:h-4 md:w-4" />
-					{saving ? "Saving" : "Save Instructions"}
+					{saving ? t("saving") : t("save_instructions")}
 				</Button>
 			</div>
 
@@ -211,7 +206,7 @@ export function PromptConfigManager({ searchSpaceId }: PromptConfigManagerProps)
 				>
 					<Info className="h-3 w-3 md:h-4 md:w-4 text-blue-600 dark:text-blue-500 shrink-0" />
 					<AlertDescription className="text-blue-800 dark:text-blue-300 text-xs md:text-sm">
-						You have unsaved changes. Click "Save Instructions" to apply them.
+						{t("unsaved_changes")}
 					</AlertDescription>
 				</Alert>
 			)}

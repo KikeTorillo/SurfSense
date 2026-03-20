@@ -10,7 +10,7 @@ export const routing = defineRouting({
 	locales: ["en", "es", "pt", "hi", "zh"],
 
 	// Used when no locale matches
-	defaultLocale: "en",
+	defaultLocale: "es",
 
 	// The `localePrefix` setting controls whether the locale is included in the pathname
 	// 'as-needed': Only add locale prefix when not using the default locale

@@ -14,8 +14,10 @@ import {
 	Users,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { myAccessAtom } from "@/atoms/members/members-query.atoms";
 import {
 	createEpisodeProfileMutationAtom,
 	createSpeakerProfileMutationAtom,
@@ -30,7 +32,6 @@ import {
 	episodeProfilesAtom,
 	speakerProfilesAtom,
 } from "@/atoms/podcast-profiles/podcast-profiles-query.atoms";
-import { myAccessAtom } from "@/atoms/members/members-query.atoms";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
 	AlertDialog,
@@ -67,7 +68,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PODCAST_TEMPLATES, type PodcastTemplate } from "@/contracts/enums/podcast-templates";
-import { TTS_PROVIDERS, LANGUAGES, getVoicesByProvider } from "@/contracts/enums/tts-providers";
+import { getVoicesByProvider, LANGUAGES, TTS_PROVIDERS } from "@/contracts/enums/tts-providers";
 import type {
 	EpisodeProfile,
 	Speaker,
@@ -143,6 +144,8 @@ const EMPTY_EPISODE_FORM: EpisodeProfileFormData = {
 // =============================================================================
 
 export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerProps) {
+	const t = useTranslations("podcastSettings");
+
 	// Speaker profile mutations
 	const { mutateAsync: createSpeaker, isPending: isCreatingSpeaker } = useAtomValue(
 		createSpeakerProfileMutationAtom
@@ -221,16 +224,16 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 	const isLoading = speakersLoading || episodesLoading;
 	const isSubmittingSpeaker = isCreatingSpeaker || isUpdatingSpeaker;
 	const isSubmittingEpisode = isCreatingEpisode || isUpdatingEpisode;
-	const isDeleting = isDeletingSpeaker || isDeletingEpisode;
-
 	const errors = [speakersFetchError, episodesFetchError].filter(Boolean) as Error[];
 
 	// =========================================================================
 	// Speaker Profile Handlers
 	// =========================================================================
 
-	const resetSpeakerForm = () =>
-		setSpeakerForm({ ...EMPTY_SPEAKER_FORM, speakers: [{ ...DEFAULT_SPEAKER }] });
+	const resetSpeakerForm = useCallback(
+		() => setSpeakerForm({ ...EMPTY_SPEAKER_FORM, speakers: [{ ...DEFAULT_SPEAKER }] }),
+		[]
+	);
 
 	const openNewSpeakerDialog = () => {
 		setEditingSpeakerProfile(null);
@@ -251,12 +254,12 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 
 	const handleSpeakerFormSubmit = useCallback(async () => {
 		if (!speakerForm.name || !speakerForm.tts_provider || !speakerForm.tts_model) {
-			toast.error("Please fill in all required fields");
+			toast.error(t("required_fields_error"));
 			return;
 		}
 		const validSpeakers = speakerForm.speakers.filter((s) => s.name && s.voice_id);
 		if (validSpeakers.length === 0) {
-			toast.error("At least one speaker with name and voice is required");
+			toast.error(t("speaker_required"));
 			return;
 		}
 		try {
@@ -285,7 +288,15 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 		} catch {
 			// Error handled by mutation
 		}
-	}, [editingSpeakerProfile, speakerForm, searchSpaceId, createSpeaker, updateSpeaker]);
+	}, [
+		editingSpeakerProfile,
+		speakerForm,
+		searchSpaceId,
+		createSpeaker,
+		updateSpeaker,
+		t,
+		resetSpeakerForm,
+	]);
 
 	const handleDeleteSpeaker = async () => {
 		if (!speakerToDelete) return;
@@ -321,7 +332,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 	// Episode Profile Handlers
 	// =========================================================================
 
-	const resetEpisodeForm = () => setEpisodeForm({ ...EMPTY_EPISODE_FORM });
+	const resetEpisodeForm = useCallback(() => setEpisodeForm({ ...EMPTY_EPISODE_FORM }), []);
 
 	const openNewEpisodeDialog = () => {
 		setEditingEpisodeProfile(null);
@@ -345,7 +356,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 
 	const handleEpisodeFormSubmit = useCallback(async () => {
 		if (!episodeForm.name) {
-			toast.error("Please fill in the profile name");
+			toast.error(t("name_required"));
 			return;
 		}
 		try {
@@ -380,7 +391,15 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 		} catch {
 			// Error handled by mutation
 		}
-	}, [editingEpisodeProfile, episodeForm, searchSpaceId, createEpisode, updateEpisode]);
+	}, [
+		editingEpisodeProfile,
+		episodeForm,
+		searchSpaceId,
+		createEpisode,
+		updateEpisode,
+		t,
+		resetEpisodeForm,
+	]);
 
 	const handleDeleteEpisode = async () => {
 		if (!episodeToDelete) return;
@@ -414,7 +433,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 				language: template.episodeProfile.language,
 				default_briefing: template.episodeProfile.default_briefing,
 			});
-			toast.success(`Template "${template.name}" applied successfully`);
+			toast.success(t("template_success", { name: template.name }));
 			setIsTemplateDialogOpen(false);
 		} catch {
 			// Errors handled by mutations
@@ -474,8 +493,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 					<Alert className="bg-muted/50 py-3 md:py-4">
 						<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 						<AlertDescription className="text-xs md:text-sm">
-							You have <span className="font-medium">read-only</span> access to podcast profiles.
-							Contact a space owner to request additional permissions.
+							{t("read_only_notice")}
 						</AlertDescription>
 					</Alert>
 				</motion.div>
@@ -487,7 +505,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 			<div className="space-y-4">
 				<div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
 					<div className="flex items-center gap-3">
-						<h3 className="text-base font-semibold">Speaker Profiles</h3>
+						<h3 className="text-base font-semibold">{t("speaker_profiles")}</h3>
 						<Button
 							variant="outline"
 							size="sm"
@@ -496,7 +514,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 							className="flex items-center gap-2 text-xs h-7"
 						>
 							<RefreshCw className={cn("h-3 w-3", speakersLoading && "animate-spin")} />
-							Refresh
+							{t("refresh")}
 						</Button>
 					</div>
 					{canCreate && (
@@ -508,7 +526,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 								className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-9"
 							>
 								<LayoutTemplate className="h-3 w-3 md:h-4 md:w-4" />
-								Use Template
+								{t("use_template")}
 							</Button>
 							<Button
 								onClick={openNewSpeakerDialog}
@@ -516,7 +534,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 								className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-9"
 							>
 								<Plus className="h-3 w-3 md:h-4 md:w-4" />
-								Add Speaker Profile
+								{t("add_speaker_profile")}
 							</Button>
 						</div>
 					)}
@@ -547,11 +565,9 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 							<div className="rounded-full bg-gradient-to-br from-violet-500/10 to-purple-500/10 p-4 md:p-6 mb-4">
 								<Users className="h-8 w-8 md:h-12 md:w-12 text-violet-600 dark:text-violet-400" />
 							</div>
-							<h3 className="text-lg font-semibold mb-2">No Speaker Profiles Yet</h3>
+							<h3 className="text-lg font-semibold mb-2">{t("no_speaker_title")}</h3>
 							<p className="text-xs md:text-sm text-muted-foreground max-w-sm mb-4">
-								{canCreate
-									? "Create a speaker profile to define podcast hosts with unique voices and personalities."
-									: "No speaker profiles have been added to this space yet."}
+								{canCreate ? t("no_speaker_desc_creator") : t("no_speaker_desc_viewer")}
 							</p>
 							{canCreate && (
 								<Button
@@ -560,7 +576,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 									className="gap-2 text-xs md:text-sm h-9 md:h-10"
 								>
 									<Plus className="h-3 w-3 md:h-4 md:w-4" />
-									Add First Speaker Profile
+									{t("add_first_speaker")}
 								</Button>
 							)}
 						</CardContent>
@@ -606,7 +622,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 																			<Copy className="h-3 w-3" />
 																		</Button>
 																	</TooltipTrigger>
-																	<TooltipContent>Duplicate</TooltipContent>
+																	<TooltipContent>{t("duplicate_tooltip")}</TooltipContent>
 																</Tooltip>
 															</TooltipProvider>
 														)}
@@ -623,7 +639,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 																			<Edit3 className="h-3 w-3" />
 																		</Button>
 																	</TooltipTrigger>
-																	<TooltipContent>Edit</TooltipContent>
+																	<TooltipContent>{t("edit_tooltip")}</TooltipContent>
 																</Tooltip>
 															</TooltipProvider>
 														)}
@@ -640,7 +656,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 																			<Trash2 className="h-3 w-3" />
 																		</Button>
 																	</TooltipTrigger>
-																	<TooltipContent>Delete</TooltipContent>
+																	<TooltipContent>{t("delete_tooltip")}</TooltipContent>
 																</Tooltip>
 															</TooltipProvider>
 														)}
@@ -656,8 +672,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 													</Badge>
 												)}
 												<Badge variant="outline" className="text-[11px]">
-													{profile.speakers.length} speaker
-													{profile.speakers.length !== 1 ? "s" : ""}
+													{t("speaker_count", { count: profile.speakers.length })}
 												</Badge>
 											</div>
 
@@ -693,7 +708,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 			<div className="space-y-4">
 				<div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
 					<div className="flex items-center gap-3">
-						<h3 className="text-base font-semibold">Episode Profiles</h3>
+						<h3 className="text-base font-semibold">{t("episode_profiles")}</h3>
 						<Button
 							variant="outline"
 							size="sm"
@@ -702,7 +717,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 							className="flex items-center gap-2 text-xs h-7"
 						>
 							<RefreshCw className={cn("h-3 w-3", episodesLoading && "animate-spin")} />
-							Refresh
+							{t("refresh")}
 						</Button>
 					</div>
 					{canCreate && (
@@ -712,7 +727,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 							className="flex items-center gap-2 text-xs md:text-sm h-8 md:h-9"
 						>
 							<Plus className="h-3 w-3 md:h-4 md:w-4" />
-							Add Episode Profile
+							{t("add_episode_profile")}
 						</Button>
 					)}
 				</div>
@@ -742,11 +757,9 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 							<div className="rounded-full bg-gradient-to-br from-orange-500/10 to-amber-500/10 p-4 md:p-6 mb-4">
 								<Mic className="h-8 w-8 md:h-12 md:w-12 text-orange-600 dark:text-orange-400" />
 							</div>
-							<h3 className="text-lg font-semibold mb-2">No Episode Profiles Yet</h3>
+							<h3 className="text-lg font-semibold mb-2">{t("no_episode_title")}</h3>
 							<p className="text-xs md:text-sm text-muted-foreground max-w-sm mb-4">
-								{canCreate
-									? "Create an episode profile to define podcast format, language, and segment count."
-									: "No episode profiles have been added to this space yet."}
+								{canCreate ? t("no_episode_desc_creator") : t("no_episode_desc_viewer")}
 							</p>
 							{canCreate && (
 								<Button
@@ -755,7 +768,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 									className="gap-2 text-xs md:text-sm h-9 md:h-10"
 								>
 									<Plus className="h-3 w-3 md:h-4 md:w-4" />
-									Add First Episode Profile
+									{t("add_first_episode")}
 								</Button>
 							)}
 						</CardContent>
@@ -801,7 +814,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 																			<Copy className="h-3 w-3" />
 																		</Button>
 																	</TooltipTrigger>
-																	<TooltipContent>Duplicate</TooltipContent>
+																	<TooltipContent>{t("duplicate_tooltip")}</TooltipContent>
 																</Tooltip>
 															</TooltipProvider>
 														)}
@@ -818,7 +831,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 																			<Edit3 className="h-3 w-3" />
 																		</Button>
 																	</TooltipTrigger>
-																	<TooltipContent>Edit</TooltipContent>
+																	<TooltipContent>{t("edit_tooltip")}</TooltipContent>
 																</Tooltip>
 															</TooltipProvider>
 														)}
@@ -835,7 +848,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 																			<Trash2 className="h-3 w-3" />
 																		</Button>
 																	</TooltipTrigger>
-																	<TooltipContent>Delete</TooltipContent>
+																	<TooltipContent>{t("delete_tooltip")}</TooltipContent>
 																</Tooltip>
 															</TooltipProvider>
 														)}
@@ -852,7 +865,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 														</Badge>
 													)}
 												<Badge variant="outline" className="text-[11px]">
-													{profile.num_segments} segment{profile.num_segments !== 1 ? "s" : ""}
+													{t("segment_count", { count: profile.num_segments })}
 												</Badge>
 												<Badge variant="outline" className="text-[11px]">
 													{languageLabel(profile.language)}
@@ -904,21 +917,21 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 				>
 					<DialogHeader>
 						<DialogTitle>
-							{editingSpeakerProfile ? "Edit Speaker Profile" : "Add Speaker Profile"}
+							{editingSpeakerProfile
+								? t("edit_speaker_dialog_title")
+								: t("add_speaker_dialog_title")}
 						</DialogTitle>
 						<DialogDescription>
-							{editingSpeakerProfile
-								? "Update the speaker profile configuration"
-								: "Define a group of podcast speakers with voice settings"}
+							{editingSpeakerProfile ? t("edit_speaker_dialog_desc") : t("add_speaker_dialog_desc")}
 						</DialogDescription>
 					</DialogHeader>
 
 					<div className="space-y-4 pt-2">
 						{/* Name */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Name *</Label>
+							<Label className="text-sm font-medium">{t("name_label")}</Label>
 							<Input
-								placeholder="e.g., Tech Talk Hosts"
+								placeholder={t("name_placeholder_speaker")}
 								value={speakerForm.name}
 								onChange={(e) => setSpeakerForm((p) => ({ ...p, name: e.target.value }))}
 							/>
@@ -929,13 +942,13 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 						{/* TTS Provider */}
 						<div className="grid gap-4 sm:grid-cols-2">
 							<div className="space-y-2">
-								<Label className="text-sm font-medium">TTS Provider *</Label>
+								<Label className="text-sm font-medium">{t("tts_provider_label")}</Label>
 								<Select
 									value={speakerForm.tts_provider}
 									onValueChange={(val) => setSpeakerForm((p) => ({ ...p, tts_provider: val }))}
 								>
 									<SelectTrigger>
-										<SelectValue placeholder="Select provider" />
+										<SelectValue placeholder={t("select_provider")} />
 									</SelectTrigger>
 									<SelectContent>
 										{TTS_PROVIDERS.map((p) => (
@@ -950,9 +963,9 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 								</Select>
 							</div>
 							<div className="space-y-2">
-								<Label className="text-sm font-medium">TTS Model *</Label>
+								<Label className="text-sm font-medium">{t("tts_model_label")}</Label>
 								<Input
-									placeholder="e.g., kokoro, tts-1"
+									placeholder={t("tts_model_placeholder")}
 									value={speakerForm.tts_model}
 									onChange={(e) => setSpeakerForm((p) => ({ ...p, tts_model: e.target.value }))}
 								/>
@@ -965,7 +978,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 						<div className="space-y-3">
 							<div className="flex items-center justify-between">
 								<Label className="text-sm font-medium">
-									Speakers ({speakerForm.speakers.length}/4)
+									{t("speakers_label", { count: speakerForm.speakers.length })}
 								</Label>
 								<Button
 									type="button"
@@ -976,16 +989,19 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 									className="text-xs h-7"
 								>
 									<Plus className="h-3 w-3 mr-1" />
-									Add Speaker
+									{t("add_speaker")}
 								</Button>
 							</div>
 
 							{speakerForm.speakers.map((speaker, idx) => (
-								<Card key={idx} className="border-border/60">
+								<Card
+									key={`speaker-${speaker.name || ""}-${speaker.voice_id || ""}-${idx}`}
+									className="border-border/60"
+								>
 									<CardContent className="p-3 space-y-3">
 										<div className="flex items-center justify-between">
 											<span className="text-xs font-medium text-muted-foreground">
-												Speaker {idx + 1}
+												{t("speaker_n", { n: idx + 1 })}
 											</span>
 											{speakerForm.speakers.length > 1 && (
 												<Button
@@ -1001,23 +1017,23 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 										</div>
 										<div className="grid gap-3 sm:grid-cols-2">
 											<div className="space-y-1.5">
-												<Label className="text-xs">Name *</Label>
+												<Label className="text-xs">{t("speaker_name_label")}</Label>
 												<Input
-													placeholder="e.g., Alex"
+													placeholder={t("speaker_name_placeholder")}
 													value={speaker.name}
 													onChange={(e) => updateSpeakerField(idx, "name", e.target.value)}
 													className="h-8 text-sm"
 												/>
 											</div>
 											<div className="space-y-1.5">
-												<Label className="text-xs">Voice ID *</Label>
+												<Label className="text-xs">{t("voice_id_label")}</Label>
 												{voiceSuggestions.length > 0 ? (
 													<Select
 														value={speaker.voice_id}
 														onValueChange={(val) => updateSpeakerField(idx, "voice_id", val)}
 													>
 														<SelectTrigger className="h-8 text-sm">
-															<SelectValue placeholder="Select voice" />
+															<SelectValue placeholder={t("select_voice")} />
 														</SelectTrigger>
 														<SelectContent>
 															{voiceSuggestions.map((v) => (
@@ -1029,7 +1045,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 													</Select>
 												) : (
 													<Input
-														placeholder="Voice ID"
+														placeholder={t("voice_id_placeholder")}
 														value={speaker.voice_id}
 														onChange={(e) => updateSpeakerField(idx, "voice_id", e.target.value)}
 														className="h-8 text-sm"
@@ -1038,18 +1054,18 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 											</div>
 										</div>
 										<div className="space-y-1.5">
-											<Label className="text-xs">Backstory</Label>
+											<Label className="text-xs">{t("backstory_label")}</Label>
 											<Textarea
-												placeholder="Background, expertise, credentials..."
+												placeholder={t("backstory_placeholder")}
 												value={speaker.backstory}
 												onChange={(e) => updateSpeakerField(idx, "backstory", e.target.value)}
 												className="text-sm min-h-[60px]"
 											/>
 										</div>
 										<div className="space-y-1.5">
-											<Label className="text-xs">Personality</Label>
+											<Label className="text-xs">{t("personality_label")}</Label>
 											<Textarea
-												placeholder="Speaking style, tone, mannerisms..."
+												placeholder={t("personality_placeholder")}
 												value={speaker.personality}
 												onChange={(e) => updateSpeakerField(idx, "personality", e.target.value)}
 												className="text-sm min-h-[60px]"
@@ -1071,7 +1087,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 									resetSpeakerForm();
 								}}
 							>
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button
 								className="flex-1"
@@ -1085,7 +1101,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 								}
 							>
 								{isSubmittingSpeaker ? <Spinner size="sm" className="mr-2" /> : null}
-								{editingSpeakerProfile ? "Save Changes" : "Create"}
+								{editingSpeakerProfile ? t("save_changes") : t("create")}
 							</Button>
 						</div>
 					</div>
@@ -1111,21 +1127,21 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 				>
 					<DialogHeader>
 						<DialogTitle>
-							{editingEpisodeProfile ? "Edit Episode Profile" : "Add Episode Profile"}
+							{editingEpisodeProfile
+								? t("edit_episode_dialog_title")
+								: t("add_episode_dialog_title")}
 						</DialogTitle>
 						<DialogDescription>
-							{editingEpisodeProfile
-								? "Update the episode profile configuration"
-								: "Define podcast episode format, language, and structure"}
+							{editingEpisodeProfile ? t("edit_episode_dialog_desc") : t("add_episode_dialog_desc")}
 						</DialogDescription>
 					</DialogHeader>
 
 					<div className="space-y-4 pt-2">
 						{/* Name */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Name *</Label>
+							<Label className="text-sm font-medium">{t("name_label")}</Label>
 							<Input
-								placeholder="e.g., Deep Dive Format"
+								placeholder={t("name_placeholder_episode")}
 								value={episodeForm.name}
 								onChange={(e) => setEpisodeForm((p) => ({ ...p, name: e.target.value }))}
 							/>
@@ -1135,7 +1151,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 
 						{/* Speaker Profile */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Speaker Profile</Label>
+							<Label className="text-sm font-medium">{t("speaker_profile_label")}</Label>
 							<Select
 								value={episodeForm.speaker_profile_id?.toString() ?? "none"}
 								onValueChange={(val) =>
@@ -1146,13 +1162,13 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 								}
 							>
 								<SelectTrigger>
-									<SelectValue placeholder="Select speaker profile (optional)" />
+									<SelectValue placeholder={t("select_speaker_optional")} />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="none">None</SelectItem>
+									<SelectItem value="none">{t("none")}</SelectItem>
 									{speakerProfiles?.map((sp) => (
 										<SelectItem key={sp.id} value={sp.id.toString()}>
-											{sp.name} ({sp.speakers.length} speaker{sp.speakers.length !== 1 ? "s" : ""})
+											{sp.name} ({t("speaker_count", { count: sp.speakers.length })})
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -1162,7 +1178,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 						{/* Segments + Language */}
 						<div className="grid gap-4 sm:grid-cols-2">
 							<div className="space-y-2">
-								<Label className="text-sm font-medium">Segments (1-10)</Label>
+								<Label className="text-sm font-medium">{t("segments_label")}</Label>
 								<Input
 									type="number"
 									min={1}
@@ -1177,7 +1193,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label className="text-sm font-medium">Language</Label>
+								<Label className="text-sm font-medium">{t("language_label")}</Label>
 								<Select
 									value={episodeForm.language}
 									onValueChange={(val) => setEpisodeForm((p) => ({ ...p, language: val }))}
@@ -1198,9 +1214,9 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 
 						{/* Default Briefing */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Default Briefing</Label>
+							<Label className="text-sm font-medium">{t("default_briefing_label")}</Label>
 							<Textarea
-								placeholder="Default briefing/instructions for episodes using this profile..."
+								placeholder={t("default_briefing_placeholder")}
 								value={episodeForm.default_briefing}
 								onChange={(e) =>
 									setEpisodeForm((p) => ({ ...p, default_briefing: e.target.value }))
@@ -1211,9 +1227,9 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 
 						{/* Outline Prompt */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Outline Prompt</Label>
+							<Label className="text-sm font-medium">{t("outline_prompt_label")}</Label>
 							<Textarea
-								placeholder="Custom prompt for outline generation (optional)..."
+								placeholder={t("outline_prompt_placeholder")}
 								value={episodeForm.outline_prompt}
 								onChange={(e) => setEpisodeForm((p) => ({ ...p, outline_prompt: e.target.value }))}
 								className="min-h-[60px]"
@@ -1222,9 +1238,9 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 
 						{/* Transcript Prompt */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Transcript Prompt</Label>
+							<Label className="text-sm font-medium">{t("transcript_prompt_label")}</Label>
 							<Textarea
-								placeholder="Custom prompt for transcript generation (optional)..."
+								placeholder={t("transcript_prompt_placeholder")}
 								value={episodeForm.transcript_prompt}
 								onChange={(e) =>
 									setEpisodeForm((p) => ({ ...p, transcript_prompt: e.target.value }))
@@ -1244,7 +1260,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 									resetEpisodeForm();
 								}}
 							>
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button
 								className="flex-1"
@@ -1252,7 +1268,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 								disabled={isSubmittingEpisode || !episodeForm.name}
 							>
 								{isSubmittingEpisode ? <Spinner size="sm" className="mr-2" /> : null}
-								{editingEpisodeProfile ? "Save Changes" : "Create"}
+								{editingEpisodeProfile ? t("save_changes") : t("create")}
 							</Button>
 						</div>
 					</div>
@@ -1270,16 +1286,14 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 					<AlertDialogHeader>
 						<AlertDialogTitle className="flex items-center gap-2">
 							<Trash2 className="h-5 w-5 text-destructive" />
-							Delete Speaker Profile
+							{t("delete_speaker_title")}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete{" "}
-							<span className="font-semibold text-foreground">{speakerToDelete?.name}</span>?
-							Episode profiles referencing this speaker profile will lose their association.
+							{t("delete_speaker_confirm", { name: speakerToDelete?.name })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={isDeletingSpeaker}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel disabled={isDeletingSpeaker}>{t("cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={handleDeleteSpeaker}
 							disabled={isDeletingSpeaker}
@@ -1288,12 +1302,12 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 							{isDeletingSpeaker ? (
 								<>
 									<Spinner size="sm" className="mr-2" />
-									Deleting
+									{t("deleting")}
 								</>
 							) : (
 								<>
 									<Trash2 className="mr-2 h-4 w-4" />
-									Delete
+									{t("delete")}
 								</>
 							)}
 						</AlertDialogAction>
@@ -1312,15 +1326,14 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 					<AlertDialogHeader>
 						<AlertDialogTitle className="flex items-center gap-2">
 							<Trash2 className="h-5 w-5 text-destructive" />
-							Delete Episode Profile
+							{t("delete_episode_title")}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete{" "}
-							<span className="font-semibold text-foreground">{episodeToDelete?.name}</span>?
+							{t("delete_episode_confirm", { name: episodeToDelete?.name })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={isDeletingEpisode}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel disabled={isDeletingEpisode}>{t("cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={handleDeleteEpisode}
 							disabled={isDeletingEpisode}
@@ -1329,12 +1342,12 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 							{isDeletingEpisode ? (
 								<>
 									<Spinner size="sm" className="mr-2" />
-									Deleting
+									{t("deleting")}
 								</>
 							) : (
 								<>
 									<Trash2 className="mr-2 h-4 w-4" />
-									Delete
+									{t("delete")}
 								</>
 							)}
 						</AlertDialogAction>
@@ -1348,11 +1361,8 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 			<Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
 				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle>Use a Template</DialogTitle>
-						<DialogDescription>
-							Select a template to create a speaker profile and episode profile with pre-configured
-							settings.
-						</DialogDescription>
+						<DialogTitle>{t("template_title")}</DialogTitle>
+						<DialogDescription>{t("template_desc")}</DialogDescription>
 					</DialogHeader>
 					<div className="grid gap-3 grid-cols-1 sm:grid-cols-2 pt-2">
 						{PODCAST_TEMPLATES.map((template) => (
@@ -1371,11 +1381,10 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 									<p className="text-xs text-muted-foreground">{template.description}</p>
 									<div className="flex items-center gap-2 flex-wrap pt-1">
 										<Badge variant="secondary" className="text-[11px]">
-											{template.speakerProfile.speakers.length} speaker
-											{template.speakerProfile.speakers.length !== 1 ? "s" : ""}
+											{t("speaker_count", { count: template.speakerProfile.speakers.length })}
 										</Badge>
 										<Badge variant="outline" className="text-[11px]">
-											{template.episodeProfile.num_segments} segments
+											{t("segment_count", { count: template.episodeProfile.num_segments })}
 										</Badge>
 										<Badge variant="outline" className="text-[11px]">
 											{template.episodeProfile.language}
@@ -1388,7 +1397,7 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 					{isApplyingTemplate && (
 						<div className="flex items-center justify-center gap-2 py-2 text-muted-foreground">
 							<Spinner size="sm" />
-							<span className="text-sm">Creating profiles...</span>
+							<span className="text-sm">{t("creating_profiles")}</span>
 						</div>
 					)}
 				</DialogContent>
