@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAtomValue } from "jotai";
 import { Check, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -96,6 +97,7 @@ export function LLMConfigForm({
 	formId,
 	hideActions = false,
 }: LLMConfigFormProps) {
+	const t = useTranslations("llmConfigForm");
 	const { data: defaultInstructions, isSuccess: defaultInstructionsLoaded } = useAtomValue(
 		defaultSystemInstructionsAtom
 	);
@@ -163,7 +165,7 @@ export function LLMConfigForm({
 				{/* Model Configuration Section */}
 				<div className="space-y-4">
 					<div className="text-xs sm:text-sm font-medium text-muted-foreground">
-						Model Configuration
+						{t("model_configuration")}
 					</div>
 
 					{/* Name & Description */}
@@ -173,9 +175,9 @@ export function LLMConfigForm({
 							name="name"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">Configuration Name</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("config_name")}</FormLabel>
 									<FormControl>
-										<Input placeholder="e.g., My GPT-4 Agent" {...field} />
+										<Input placeholder={t("name_placeholder")} {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -188,13 +190,17 @@ export function LLMConfigForm({
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel className="text-muted-foreground text-xs sm:text-sm">
-										Description
+										{t("description")}
 										<Badge variant="outline" className="ml-2 text-[10px]">
-											Optional
+											{t("optional")}
 										</Badge>
 									</FormLabel>
 									<FormControl>
-										<Input placeholder="Brief description" {...field} value={field.value ?? ""} />
+										<Input
+											placeholder={t("description_placeholder")}
+											{...field}
+											value={field.value ?? ""}
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -208,11 +214,11 @@ export function LLMConfigForm({
 						name="provider"
 						render={({ field }) => (
 							<FormItem>
-								<FormLabel className="text-xs sm:text-sm">LLM Provider</FormLabel>
+								<FormLabel className="text-xs sm:text-sm">{t("llm_provider")}</FormLabel>
 								<Select value={field.value} onValueChange={handleProviderChange}>
 									<FormControl>
 										<SelectTrigger>
-											<SelectValue placeholder="Select a provider" />
+											<SelectValue placeholder={t("select_provider")} />
 										</SelectTrigger>
 									</FormControl>
 									<SelectContent className="max-h-[300px] bg-muted dark:border-neutral-700">
@@ -245,10 +251,12 @@ export function LLMConfigForm({
 									name="custom_provider"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel className="text-xs sm:text-sm">Custom Provider Name</FormLabel>
+											<FormLabel className="text-xs sm:text-sm">
+												{t("custom_provider_name")}
+											</FormLabel>
 											<FormControl>
 												<Input
-													placeholder="my-custom-provider"
+													placeholder={t("custom_provider_placeholder")}
 													{...field}
 													value={field.value ?? ""}
 												/>
@@ -267,7 +275,7 @@ export function LLMConfigForm({
 						name="model_name"
 						render={({ field }) => (
 							<FormItem className="flex flex-col">
-								<FormLabel className="text-xs sm:text-sm">Model Name</FormLabel>
+								<FormLabel className="text-xs sm:text-sm">{t("model_name")}</FormLabel>
 								<Popover open={modelComboboxOpen} onOpenChange={setModelComboboxOpen}>
 									<PopoverTrigger asChild>
 										<FormControl>
@@ -280,7 +288,7 @@ export function LLMConfigForm({
 													!field.value && "text-muted-foreground"
 												)}
 											>
-												{field.value || "Select or type model name"}
+												{field.value || t("select_or_type_model")}
 												<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 											</Button>
 										</FormControl>
@@ -291,18 +299,20 @@ export function LLMConfigForm({
 									>
 										<Command shouldFilter={false} className="bg-transparent">
 											<CommandInput
-												placeholder={selectedProvider?.example || "Type model name..."}
+												placeholder={selectedProvider?.example || t("type_model_name")}
 												value={field.value}
 												onValueChange={field.onChange}
 											/>
 											<CommandList className="max-h-[300px]">
 												<CommandEmpty>
 													<div className="py-3 text-center text-sm text-muted-foreground">
-														{field.value ? `Using: "${field.value}"` : "Type your model name"}
+														{field.value
+															? t("using_model", { name: field.value })
+															: t("type_model_name")}
 													</div>
 												</CommandEmpty>
 												{availableModels.length > 0 && (
-													<CommandGroup heading="Suggested Models">
+													<CommandGroup heading={t("suggested_models")}>
 														{availableModels
 															.filter(
 																(model) =>
@@ -331,7 +341,7 @@ export function LLMConfigForm({
 																		<div className="font-medium">{model.label}</div>
 																		{model.contextWindow && (
 																			<div className="text-xs text-muted-foreground">
-																				Context: {model.contextWindow}
+																				{t("context_window", { context: model.contextWindow })}
 																			</div>
 																		)}
 																	</div>
@@ -345,7 +355,7 @@ export function LLMConfigForm({
 								</Popover>
 								{selectedProvider?.example && (
 									<FormDescription className="text-[10px] sm:text-xs">
-										Example: {selectedProvider.example}
+										{t("example_model", { example: selectedProvider.example })}
 									</FormDescription>
 								)}
 								<FormMessage />
@@ -360,17 +370,17 @@ export function LLMConfigForm({
 							name="api_key"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel className="text-xs sm:text-sm">API Key</FormLabel>
+									<FormLabel className="text-xs sm:text-sm">{t("api_key")}</FormLabel>
 									<FormControl>
 										<Input
 											type="password"
-											placeholder={watchProvider === "OLLAMA" ? "Any value" : "sk-..."}
+											placeholder={watchProvider === "OLLAMA" ? t("any_value") : "sk-..."}
 											{...field}
 										/>
 									</FormControl>
 									{watchProvider === "OLLAMA" && (
 										<FormDescription className="text-[10px] sm:text-xs">
-											Ollama doesn&apos;t require auth — enter any value
+											{t("ollama_no_auth")}
 										</FormDescription>
 									)}
 									<FormMessage />
@@ -384,10 +394,10 @@ export function LLMConfigForm({
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel className="flex items-center gap-2 text-xs sm:text-sm">
-										API Base URL
+										{t("api_base_url")}
 										{selectedProvider?.apiBase && (
 											<Badge variant="secondary" className="text-[10px]">
-												Auto-filled
+												{t("auto_filled")}
 											</Badge>
 										)}
 									</FormLabel>
@@ -446,7 +456,7 @@ export function LLMConfigForm({
 									type="button"
 									className="flex w-full items-center justify-between py-2 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
 								>
-									<span>Advanced Parameters</span>
+									<span>{t("advanced_parameters")}</span>
 									<ChevronDown
 										className={cn(
 											"h-4 w-4 transition-transform duration-200",
@@ -484,7 +494,7 @@ export function LLMConfigForm({
 							type="button"
 							className="flex w-full items-center justify-between py-2 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
 						>
-							<span>System Instructions</span>
+							<span>{t("system_instructions")}</span>
 							<ChevronDown
 								className={cn(
 									"h-4 w-4 transition-transform duration-200",
@@ -501,7 +511,7 @@ export function LLMConfigForm({
 							render={({ field }) => (
 								<FormItem>
 									<div className="flex items-center justify-between">
-										<FormLabel className="text-xs sm:text-sm">Instructions for the AI</FormLabel>
+										<FormLabel className="text-xs sm:text-sm">{t("instructions_label")}</FormLabel>
 										{defaultInstructions && (
 											<Button
 												type="button"
@@ -512,20 +522,20 @@ export function LLMConfigForm({
 												}
 												className="h-7 text-[10px] sm:text-xs text-muted-foreground hover:text-foreground"
 											>
-												Reset to Default
+												{t("reset_default")}
 											</Button>
 										)}
 									</div>
 									<FormControl>
 										<Textarea
-											placeholder="Enter system instructions for the AI..."
+											placeholder={t("instructions_placeholder")}
 											rows={6}
 											className="font-mono text-[11px] sm:text-xs resize-none"
 											{...field}
 										/>
 									</FormControl>
 									<FormDescription className="text-[10px] sm:text-xs">
-										Use {"{resolved_today}"} to include today&apos;s date dynamically
+										{t("date_hint", { placeholder: "{resolved_today}" })}
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -540,10 +550,10 @@ export function LLMConfigForm({
 								<FormItem className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
 									<div className="space-y-0.5">
 										<FormLabel className="text-xs sm:text-sm font-medium">
-											Enable Citations
+											{t("enable_citations")}
 										</FormLabel>
 										<FormDescription className="text-[10px] sm:text-xs">
-											Include [citation:id] references to source documents
+											{t("citations_desc")}
 										</FormDescription>
 									</div>
 									<FormControl>
@@ -570,7 +580,7 @@ export function LLMConfigForm({
 								disabled={isSubmitting}
 								className="text-xs sm:text-sm h-9 sm:h-10"
 							>
-								Cancel
+								{t("cancel")}
 							</Button>
 						)}
 						<Button
@@ -581,13 +591,10 @@ export function LLMConfigForm({
 							{isSubmitting ? (
 								<>
 									<Spinner size="sm" />
-									{mode === "edit" ? "Updating..." : "Creating"}
+									{mode === "edit" ? t("updating") : t("creating")}
 								</>
 							) : (
-								<>
-									{submitLabel ??
-										(mode === "edit" ? "Update Configuration" : "Create Configuration")}
-								</>
+								<>{submitLabel ?? (mode === "edit" ? t("update_config") : t("create_config"))}</>
 							)}
 						</Button>
 					</div>

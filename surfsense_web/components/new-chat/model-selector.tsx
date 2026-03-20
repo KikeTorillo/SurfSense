@@ -2,6 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import { Bot, Check, ChevronDown, Edit3, ImageIcon, Plus, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type UIEvent, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -53,6 +54,7 @@ export function ModelSelector({
 	onAddNewImage,
 	className,
 }: ModelSelectorProps) {
+	const t = useTranslations("modelSelector");
 	const [open, setOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState<"llm" | "image">("llm");
 	const [llmSearchQuery, setLlmSearchQuery] = useState("");
@@ -178,7 +180,7 @@ export function ModelSelector({
 				return;
 			}
 			if (!searchSpaceId) {
-				toast.error("No search space selected");
+				toast.error(t("no_search_space"));
 				return;
 			}
 			try {
@@ -186,14 +188,14 @@ export function ModelSelector({
 					search_space_id: Number(searchSpaceId),
 					data: { agent_llm_id: config.id },
 				});
-				toast.success(`Switched to ${config.name}`);
+				toast.success(t("switched_to", { name: config.name }));
 				setOpen(false);
 			} catch (error) {
 				console.error("Failed to switch model:", error);
-				toast.error("Failed to switch model");
+				toast.error(t("switch_failed"));
 			}
 		},
-		[currentLLMConfig, searchSpaceId, updatePreferences]
+		[currentLLMConfig, searchSpaceId, updatePreferences, t]
 	);
 
 	const handleEditLLMConfig = useCallback(
@@ -212,7 +214,7 @@ export function ModelSelector({
 				return;
 			}
 			if (!searchSpaceId) {
-				toast.error("No search space selected");
+				toast.error(t("no_search_space"));
 				return;
 			}
 			try {
@@ -220,13 +222,13 @@ export function ModelSelector({
 					search_space_id: Number(searchSpaceId),
 					data: { image_generation_config_id: configId },
 				});
-				toast.success("Image model updated");
+				toast.success(t("image_updated"));
 				setOpen(false);
 			} catch {
-				toast.error("Failed to switch image model");
+				toast.error(t("switch_image_failed"));
 			}
 		},
-		[currentImageConfig, searchSpaceId, updatePreferences]
+		[currentImageConfig, searchSpaceId, updatePreferences, t]
 	);
 
 	return (
@@ -242,7 +244,7 @@ export function ModelSelector({
 					{isLoading ? (
 						<>
 							<Spinner size="sm" className="text-muted-foreground" />
-							<span className="text-muted-foreground hidden md:inline">Loading</span>
+							<span className="text-muted-foreground hidden md:inline">{t("loading")}</span>
 						</>
 					) : (
 						<>
@@ -259,7 +261,9 @@ export function ModelSelector({
 							) : (
 								<>
 									<Bot className="size-4 text-muted-foreground" />
-									<span className="text-muted-foreground hidden md:inline">Select Model</span>
+									<span className="text-muted-foreground hidden md:inline">
+										{t("select_model")}
+									</span>
 								</>
 							)}
 
@@ -307,14 +311,14 @@ export function ModelSelector({
 								className="gap-2 text-sm font-medium rounded-none text-muted-foreground transition-all duration-200 h-full bg-transparent data-[state=active]:bg-transparent shadow-none data-[state=active]:shadow-none border-b-[1.5px] border-transparent data-[state=active]:border-foreground dark:data-[state=active]:border-white data-[state=active]:text-foreground"
 							>
 								<Zap className="size-4" />
-								LLM
+								{t("llm_tab")}
 							</TabsTrigger>
 							<TabsTrigger
 								value="image"
 								className="gap-2 text-sm font-medium rounded-none text-muted-foreground transition-all duration-200 h-full bg-transparent data-[state=active]:bg-transparent shadow-none data-[state=active]:shadow-none border-b-[1.5px] border-transparent data-[state=active]:border-foreground dark:data-[state=active]:border-white data-[state=active]:text-foreground"
 							>
 								<ImageIcon className="size-4" />
-								Image
+								{t("image_tab")}
 							</TabsTrigger>
 						</TabsList>
 					</div>
@@ -328,7 +332,7 @@ export function ModelSelector({
 							{totalLLMModels > 3 && (
 								<div className="px-2 md:px-3 py-1.5 md:py-2">
 									<CommandInput
-										placeholder="Search models"
+										placeholder={t("search_models")}
 										value={llmSearchQuery}
 										onValueChange={setLlmSearchQuery}
 										className="h-7 md:h-8 w-full text-xs md:text-sm border-0 bg-transparent focus:ring-0 placeholder:text-muted-foreground/60"
@@ -347,8 +351,8 @@ export function ModelSelector({
 								<CommandEmpty className="py-8 text-center">
 									<div className="flex flex-col items-center gap-2">
 										<Bot className="size-8 text-muted-foreground" />
-										<p className="text-sm text-muted-foreground">No models found</p>
-										<p className="text-xs text-muted-foreground/60">Try a different search term</p>
+										<p className="text-sm text-muted-foreground">{t("no_models_found")}</p>
+										<p className="text-xs text-muted-foreground/60">{t("try_different_search")}</p>
 									</div>
 								</CommandEmpty>
 
@@ -356,7 +360,7 @@ export function ModelSelector({
 								{filteredLLMGlobal.length > 0 && (
 									<CommandGroup>
 										<div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground tracking-wider">
-											Global Models
+											{t("global_models")}
 										</div>
 										{filteredLLMGlobal.map((config) => {
 											const isSelected = currentLLMConfig?.id === config.id;
@@ -386,7 +390,7 @@ export function ModelSelector({
 																			variant="secondary"
 																			className="text-[9px] px-1 py-0 h-3.5 bg-violet-800 text-white dark:bg-violet-800 dark:text-white border-0"
 																		>
-																			Recommended
+																			{t("recommended")}
 																		</Badge>
 																	)}
 																	{isSelected && (
@@ -395,14 +399,14 @@ export function ModelSelector({
 																</div>
 																<div className="flex items-center gap-1.5 mt-0.5">
 																	<span className="text-xs text-muted-foreground truncate">
-																		{isAutoMode ? "Auto Mode" : config.model_name}
+																		{isAutoMode ? t("auto_mode") : config.model_name}
 																	</span>
 																	{!isAutoMode && config.citations_enabled && (
 																		<Badge
 																			variant="outline"
 																			className="text-[9px] px-1 py-0 h-3.5 bg-primary/10 text-primary border-primary/20"
 																		>
-																			Citations
+																			{t("citations")}
 																		</Badge>
 																	)}
 																</div>
@@ -433,7 +437,7 @@ export function ModelSelector({
 								{filteredLLMUser.length > 0 && (
 									<CommandGroup>
 										<div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground tracking-wider">
-											Your Configurations
+											{t("your_configs")}
 										</div>
 										{filteredLLMUser.map((config) => {
 											const isSelected = currentLLMConfig?.id === config.id;
@@ -467,7 +471,7 @@ export function ModelSelector({
 																			variant="outline"
 																			className="text-[9px] px-1 py-0 h-3.5 bg-primary/10 text-primary border-primary/20"
 																		>
-																			Citations
+																			{t("citations")}
 																		</Badge>
 																	)}
 																</div>
@@ -500,7 +504,7 @@ export function ModelSelector({
 										}}
 									>
 										<Plus className="size-4 text-primary" />
-										<span className="text-sm font-medium">Add New Configuration</span>
+										<span className="text-sm font-medium">{t("add_new_config")}</span>
 									</Button>
 								</div>
 							</CommandList>
@@ -516,7 +520,7 @@ export function ModelSelector({
 							{totalImageModels > 3 && (
 								<div className="px-2 md:px-3 py-1.5 md:py-2">
 									<CommandInput
-										placeholder="Search models"
+										placeholder={t("search_models")}
 										value={imageSearchQuery}
 										onValueChange={setImageSearchQuery}
 										className="h-7 md:h-8 w-full text-xs md:text-sm border-0 bg-transparent focus:ring-0 placeholder:text-muted-foreground/60"
@@ -534,7 +538,7 @@ export function ModelSelector({
 								<CommandEmpty className="py-8 text-center">
 									<div className="flex flex-col items-center gap-2">
 										<ImageIcon className="size-8 text-muted-foreground" />
-										<p className="text-sm text-muted-foreground">No image models found</p>
+										<p className="text-sm text-muted-foreground">{t("no_image_models")}</p>
 									</div>
 								</CommandEmpty>
 
@@ -542,7 +546,7 @@ export function ModelSelector({
 								{filteredImageGlobal.length > 0 && (
 									<CommandGroup>
 										<div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground tracking-wider">
-											Global Image Models
+											{t("global_image_models")}
 										</div>
 										{filteredImageGlobal.map((config) => {
 											const isSelected = currentImageConfig?.id === config.id;
@@ -576,7 +580,7 @@ export function ModelSelector({
 																{isSelected && <Check className="size-3.5 text-primary shrink-0" />}
 															</div>
 															<span className="text-xs text-muted-foreground truncate block">
-																{isAuto ? "Auto Mode" : config.model_name}
+																{isAuto ? t("auto_mode") : config.model_name}
 															</span>
 														</div>
 														{onEditImage && !isAuto && (
@@ -608,7 +612,7 @@ export function ModelSelector({
 										)}
 										<CommandGroup>
 											<div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground tracking-wider">
-												Your Image Models
+												{t("your_image_models")}
 											</div>
 											{filteredImageUser.map((config) => {
 												const isSelected = currentImageConfig?.id === config.id;
@@ -670,7 +674,7 @@ export function ModelSelector({
 											}}
 										>
 											<Plus className="size-4 text-primary" />
-											<span className="text-sm font-medium">Add Image Model</span>
+											<span className="text-sm font-medium">{t("add_image_model")}</span>
 										</Button>
 									</div>
 								)}

@@ -3,6 +3,7 @@
 import { useAtomValue } from "jotai";
 import { AlertCircle, Check, ChevronsUpDown, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -69,6 +70,7 @@ export function ImageConfigDialog({
 	searchSpaceId,
 	mode,
 }: ImageConfigDialogProps) {
+	const t = useTranslations("imageConfigDialog");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [mounted, setMounted] = useState(false);
 	const [formData, setFormData] = useState(INITIAL_FORM);
@@ -126,17 +128,17 @@ export function ImageConfigDialog({
 	}, [formData.provider]);
 
 	const getTitle = () => {
-		if (mode === "create") return "Add Image Model";
-		if (isAutoMode) return "Auto Mode (Fastest)";
-		if (isGlobal) return "View Global Image Model";
-		return "Edit Image Model";
+		if (mode === "create") return t("add_title");
+		if (isAutoMode) return t("auto_mode_title");
+		if (isGlobal) return t("view_global_title");
+		return t("edit_title");
 	};
 
 	const getSubtitle = () => {
-		if (mode === "create") return "Set up a new image generation provider";
-		if (isAutoMode) return "Automatically routes requests across providers";
-		if (isGlobal) return "Read-only global configuration";
-		return "Update your image model settings";
+		if (mode === "create") return t("create_subtitle");
+		if (isAutoMode) return t("auto_mode_subtitle");
+		if (isGlobal) return t("global_subtitle");
+		return t("edit_subtitle");
 	};
 
 	const handleSubmit = useCallback(async () => {
@@ -159,7 +161,7 @@ export function ImageConfigDialog({
 						data: { image_generation_config_id: result.id },
 					});
 				}
-				toast.success("Image model created and assigned!");
+				toast.success(t("created_assigned"));
 				onOpenChange(false);
 			} else if (!isGlobal && config) {
 				await updateConfig({
@@ -174,12 +176,12 @@ export function ImageConfigDialog({
 						api_version: formData.api_version || undefined,
 					},
 				});
-				toast.success("Image model updated!");
+				toast.success(t("updated"));
 				onOpenChange(false);
 			}
 		} catch (error) {
 			console.error("Failed to save image config:", error);
-			toast.error("Failed to save image model");
+			toast.error(t("save_failed"));
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -193,6 +195,7 @@ export function ImageConfigDialog({
 		updateConfig,
 		updatePreferences,
 		onOpenChange,
+		t,
 	]);
 
 	const handleUseGlobalConfig = useCallback(async () => {
@@ -203,15 +206,15 @@ export function ImageConfigDialog({
 				search_space_id: searchSpaceId,
 				data: { image_generation_config_id: config.id },
 			});
-			toast.success(`Now using ${config.name}`);
+			toast.success(t("now_using", { name: config.name }));
 			onOpenChange(false);
 		} catch (error) {
 			console.error("Failed to set image model:", error);
-			toast.error("Failed to set image model");
+			toast.error(t("set_failed"));
 		} finally {
 			setIsSubmitting(false);
 		}
-	}, [config, isGlobal, searchSpaceId, updatePreferences, onOpenChange]);
+	}, [config, isGlobal, searchSpaceId, updatePreferences, onOpenChange, t]);
 
 	const isFormValid = formData.name && formData.provider && formData.model_name && formData.api_key;
 	const selectedProvider = IMAGE_GEN_PROVIDERS.find((p) => p.value === formData.provider);
@@ -259,12 +262,12 @@ export function ImageConfigDialog({
 										<h2 className="text-lg font-semibold tracking-tight">{getTitle()}</h2>
 										{isAutoMode && (
 											<Badge variant="secondary" className="text-[10px]">
-												Recommended
+												{t("recommended")}
 											</Badge>
 										)}
 										{isGlobal && !isAutoMode && mode !== "create" && (
 											<Badge variant="secondary" className="text-[10px]">
-												Global
+												{t("global_badge")}
 											</Badge>
 										)}
 									</div>
@@ -282,7 +285,7 @@ export function ImageConfigDialog({
 									className="absolute right-4 top-4 h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
 								>
 									<X className="h-4 w-4" />
-									<span className="sr-only">Close</span>
+									<span className="sr-only">{t("close")}</span>
 								</Button>
 							</div>
 
@@ -299,8 +302,7 @@ export function ImageConfigDialog({
 								{isAutoMode && (
 									<Alert className="mb-5 border-violet-500/30 bg-violet-500/5">
 										<AlertDescription className="text-sm text-violet-700 dark:text-violet-400">
-											Auto mode distributes image generation requests across all configured
-											providers for optimal performance and rate limit protection.
+											{t("auto_mode_desc")}
 										</AlertDescription>
 									</Alert>
 								)}
@@ -310,21 +312,21 @@ export function ImageConfigDialog({
 										<Alert className="mb-5 border-amber-500/30 bg-amber-500/5">
 											<AlertCircle className="size-4 text-amber-500" />
 											<AlertDescription className="text-sm text-amber-700 dark:text-amber-400">
-												Global configurations are read-only. To customize, create a new model.
+												{t("global_readonly")}
 											</AlertDescription>
 										</Alert>
 										<div className="space-y-4">
 											<div className="grid gap-4 sm:grid-cols-2">
 												<div className="space-y-1.5">
 													<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-														Name
+														{t("name_label")}
 													</div>
 													<p className="text-sm font-medium">{config.name}</p>
 												</div>
 												{config.description && (
 													<div className="space-y-1.5">
 														<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-															Description
+															{t("description_label")}
 														</div>
 														<p className="text-sm text-muted-foreground">{config.description}</p>
 													</div>
@@ -334,13 +336,13 @@ export function ImageConfigDialog({
 											<div className="grid gap-4 sm:grid-cols-2">
 												<div className="space-y-1.5">
 													<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-														Provider
+														{t("provider_label")}
 													</div>
 													<p className="text-sm font-medium">{config.provider}</p>
 												</div>
 												<div className="space-y-1.5">
 													<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-														Model
+														{t("model_label")}
 													</div>
 													<p className="text-sm font-medium font-mono">{config.model_name}</p>
 												</div>
@@ -352,18 +354,18 @@ export function ImageConfigDialog({
 								{(mode === "create" || (mode === "edit" && !isGlobal)) && (
 									<div className="space-y-4">
 										<div className="space-y-2">
-											<Label className="text-sm font-medium">Name *</Label>
+											<Label className="text-sm font-medium">{t("name_label")} *</Label>
 											<Input
-												placeholder="e.g., My DALL-E 3"
+												placeholder={t("name_placeholder")}
 												value={formData.name}
 												onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
 											/>
 										</div>
 
 										<div className="space-y-2">
-											<Label className="text-sm font-medium">Description</Label>
+											<Label className="text-sm font-medium">{t("description_label")}</Label>
 											<Input
-												placeholder="Optional description"
+												placeholder={t("description_placeholder")}
 												value={formData.description}
 												onChange={(e) =>
 													setFormData((p) => ({ ...p, description: e.target.value }))
@@ -374,7 +376,7 @@ export function ImageConfigDialog({
 										<Separator />
 
 										<div className="space-y-2">
-											<Label className="text-sm font-medium">Provider *</Label>
+											<Label className="text-sm font-medium">{t("provider_required")}</Label>
 											<Select
 												value={formData.provider}
 												onValueChange={(val) =>
@@ -382,7 +384,7 @@ export function ImageConfigDialog({
 												}
 											>
 												<SelectTrigger>
-													<SelectValue placeholder="Select a provider" />
+													<SelectValue placeholder={t("select_provider")} />
 												</SelectTrigger>
 												<SelectContent className="bg-muted dark:border-neutral-700">
 													{IMAGE_GEN_PROVIDERS.map((p) => (
@@ -395,7 +397,7 @@ export function ImageConfigDialog({
 										</div>
 
 										<div className="space-y-2">
-											<Label className="text-sm font-medium">Model Name *</Label>
+											<Label className="text-sm font-medium">{t("model_name_required")}</Label>
 											{suggestedModels.length > 0 ? (
 												<Popover open={modelComboboxOpen} onOpenChange={setModelComboboxOpen}>
 													<PopoverTrigger asChild>
@@ -404,7 +406,7 @@ export function ImageConfigDialog({
 															role="combobox"
 															className="w-full justify-between font-normal bg-transparent"
 														>
-															{formData.model_name || "Select or type a model..."}
+															{formData.model_name || t("select_or_type_model")}
 															<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 														</Button>
 													</PopoverTrigger>
@@ -414,7 +416,7 @@ export function ImageConfigDialog({
 													>
 														<Command className="bg-transparent">
 															<CommandInput
-																placeholder="Search or type model..."
+																placeholder={t("search_or_type_model")}
 																value={formData.model_name}
 																onValueChange={(val) =>
 																	setFormData((p) => ({ ...p, model_name: val }))
@@ -423,7 +425,7 @@ export function ImageConfigDialog({
 															<CommandList>
 																<CommandEmpty>
 																	<span className="text-xs text-muted-foreground">
-																		Type a custom model name
+																		{t("type_custom_model")}
 																	</span>
 																</CommandEmpty>
 																<CommandGroup>
@@ -457,7 +459,7 @@ export function ImageConfigDialog({
 												</Popover>
 											) : (
 												<Input
-													placeholder="e.g., dall-e-3"
+													placeholder={t("model_placeholder")}
 													value={formData.model_name}
 													onChange={(e) =>
 														setFormData((p) => ({ ...p, model_name: e.target.value }))
@@ -467,7 +469,7 @@ export function ImageConfigDialog({
 										</div>
 
 										<div className="space-y-2">
-											<Label className="text-sm font-medium">API Key *</Label>
+											<Label className="text-sm font-medium">{t("api_key_label")}</Label>
 											<Input
 												type="password"
 												placeholder="sk-..."
@@ -477,7 +479,7 @@ export function ImageConfigDialog({
 										</div>
 
 										<div className="space-y-2">
-											<Label className="text-sm font-medium">API Base URL</Label>
+											<Label className="text-sm font-medium">{t("api_base_label")}</Label>
 											<Input
 												placeholder={selectedProvider?.apiBase || "Optional"}
 												value={formData.api_base}
@@ -487,7 +489,7 @@ export function ImageConfigDialog({
 
 										{formData.provider === "AZURE_OPENAI" && (
 											<div className="space-y-2">
-												<Label className="text-sm font-medium">API Version (Azure)</Label>
+												<Label className="text-sm font-medium">{t("api_version_label")}</Label>
 												<Input
 													placeholder="2024-02-15-preview"
 													value={formData.api_version}
@@ -510,7 +512,7 @@ export function ImageConfigDialog({
 									disabled={isSubmitting}
 									className="text-sm h-9"
 								>
-									Cancel
+									{t("cancel")}
 								</Button>
 								{mode === "create" || (mode === "edit" && !isGlobal) ? (
 									<Button
@@ -521,12 +523,12 @@ export function ImageConfigDialog({
 										{isSubmitting ? (
 											<>
 												<Spinner size="sm" />
-												{mode === "edit" ? "Saving" : "Creating"}
+												{mode === "edit" ? t("saving") : t("creating")}
 											</>
 										) : mode === "edit" ? (
-											"Save Changes"
+											t("save_changes")
 										) : (
-											"Create & Use"
+											t("create_use")
 										)}
 									</Button>
 								) : isAutoMode ? (
@@ -535,7 +537,7 @@ export function ImageConfigDialog({
 										onClick={handleUseGlobalConfig}
 										disabled={isSubmitting}
 									>
-										{isSubmitting ? "Loading..." : "Use Auto Mode"}
+										{isSubmitting ? t("saving") : t("use_auto_mode")}
 									</Button>
 								) : isGlobal && config ? (
 									<Button
@@ -543,7 +545,7 @@ export function ImageConfigDialog({
 										onClick={handleUseGlobalConfig}
 										disabled={isSubmitting}
 									>
-										{isSubmitting ? "Loading..." : "Use This Model"}
+										{isSubmitting ? t("saving") : t("use_this_model")}
 									</Button>
 								) : null}
 							</div>

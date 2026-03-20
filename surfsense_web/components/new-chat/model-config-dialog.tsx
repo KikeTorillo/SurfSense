@@ -3,6 +3,7 @@
 import { useAtomValue } from "jotai";
 import { AlertCircle, X, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ export function ModelConfigDialog({
 	searchSpaceId,
 	mode,
 }: ModelConfigDialogProps) {
+	const t = useTranslations("modelConfigDialog");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [mounted, setMounted] = useState(false);
 	const [scrollPos, setScrollPos] = useState<"top" | "middle" | "bottom">("top");
@@ -73,17 +75,17 @@ export function ModelConfigDialog({
 	const isAutoMode = config && "is_auto_mode" in config && config.is_auto_mode;
 
 	const getTitle = () => {
-		if (mode === "create") return "Add New Configuration";
-		if (isAutoMode) return "Auto Mode (Fastest)";
-		if (isGlobal) return "View Global Configuration";
-		return "Edit Configuration";
+		if (mode === "create") return t("add_new_title");
+		if (isAutoMode) return t("auto_mode_title");
+		if (isGlobal) return t("view_global_title");
+		return t("edit_title");
 	};
 
 	const getSubtitle = () => {
-		if (mode === "create") return "Set up a new LLM provider for this search space";
-		if (isAutoMode) return "Automatically routes requests across providers";
-		if (isGlobal) return "Read-only global configuration";
-		return "Update your configuration settings";
+		if (mode === "create") return t("create_subtitle");
+		if (isAutoMode) return t("auto_mode_subtitle");
+		if (isGlobal) return t("global_subtitle");
+		return t("edit_subtitle");
 	};
 
 	const handleSubmit = useCallback(
@@ -105,7 +107,7 @@ export function ModelConfigDialog({
 						});
 					}
 
-					toast.success("Configuration created and assigned!");
+					toast.success(t("created_assigned"));
 					onOpenChange(false);
 				} else if (!isGlobal && config) {
 					await updateConfig({
@@ -124,12 +126,12 @@ export function ModelConfigDialog({
 							citations_enabled: data.citations_enabled,
 						},
 					});
-					toast.success("Configuration updated!");
+					toast.success(t("updated"));
 					onOpenChange(false);
 				}
 			} catch (error) {
 				console.error("Failed to save configuration:", error);
-				toast.error("Failed to save configuration");
+				toast.error(t("save_failed"));
 			} finally {
 				setIsSubmitting(false);
 			}
@@ -143,6 +145,7 @@ export function ModelConfigDialog({
 			updateConfig,
 			updatePreferences,
 			onOpenChange,
+			t,
 		]
 	);
 
@@ -156,15 +159,15 @@ export function ModelConfigDialog({
 					agent_llm_id: config.id,
 				},
 			});
-			toast.success(`Now using ${config.name}`);
+			toast.success(t("now_using", { name: config.name }));
 			onOpenChange(false);
 		} catch (error) {
 			console.error("Failed to set model:", error);
-			toast.error("Failed to set model");
+			toast.error(t("set_failed"));
 		} finally {
 			setIsSubmitting(false);
 		}
-	}, [config, isGlobal, searchSpaceId, updatePreferences, onOpenChange]);
+	}, [config, isGlobal, searchSpaceId, updatePreferences, onOpenChange, t]);
 
 	if (!mounted) return null;
 
@@ -211,17 +214,17 @@ export function ModelConfigDialog({
 										<h2 className="text-lg font-semibold tracking-tight">{getTitle()}</h2>
 										{isAutoMode && (
 											<Badge variant="secondary" className="text-[10px]">
-												Recommended
+												{t("recommended")}
 											</Badge>
 										)}
 										{isGlobal && !isAutoMode && mode !== "create" && (
 											<Badge variant="secondary" className="text-[10px]">
-												Global
+												{t("global_badge")}
 											</Badge>
 										)}
 										{!isGlobal && mode !== "create" && !isAutoMode && (
 											<Badge variant="outline" className="text-[10px]">
-												Custom
+												{t("custom_badge")}
 											</Badge>
 										)}
 									</div>
@@ -239,7 +242,7 @@ export function ModelConfigDialog({
 									className="absolute right-4 top-4 h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
 								>
 									<X className="h-4 w-4" />
-									<span className="sr-only">Close</span>
+									<span className="sr-only">{t("close")}</span>
 								</Button>
 							</div>
 
@@ -256,8 +259,7 @@ export function ModelConfigDialog({
 								{isAutoMode && (
 									<Alert className="mb-5 border-violet-500/30 bg-violet-500/5">
 										<AlertDescription className="text-sm text-violet-700 dark:text-violet-400">
-											Auto mode automatically distributes requests across all available LLM
-											providers to optimize performance and avoid rate limits.
+											{t("auto_mode_desc")}
 										</AlertDescription>
 									</Alert>
 								)}
@@ -266,8 +268,7 @@ export function ModelConfigDialog({
 									<Alert className="mb-5 border-amber-500/30 bg-amber-500/5">
 										<AlertCircle className="size-4 text-amber-500" />
 										<AlertDescription className="text-sm text-amber-700 dark:text-amber-400">
-											Global configurations are read-only. To customize settings, create a new
-											configuration based on this template.
+											{t("global_readonly")}
 										</AlertDescription>
 									</Alert>
 								)}
@@ -286,7 +287,7 @@ export function ModelConfigDialog({
 										<div className="space-y-4">
 											<div className="space-y-1.5">
 												<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-													How It Works
+													{t("how_it_works")}
 												</div>
 												<p className="text-sm text-muted-foreground">{config.description}</p>
 											</div>
@@ -295,17 +296,17 @@ export function ModelConfigDialog({
 
 											<div className="space-y-3">
 												<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-													Key Benefits
+													{t("key_benefits")}
 												</div>
 												<div className="space-y-2">
 													<div className="flex items-start gap-3 p-3 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/50">
 														<Zap className="size-4 text-violet-600 dark:text-violet-400 mt-0.5 shrink-0" />
 														<div>
 															<p className="text-sm font-medium text-violet-900 dark:text-violet-100">
-																Automatic (Fastest)
+																{t("automatic_fastest")}
 															</p>
 															<p className="text-xs text-violet-700 dark:text-violet-300">
-																Distributes requests across all configured LLM providers
+																{t("distributes_requests")}
 															</p>
 														</div>
 													</div>
@@ -313,10 +314,10 @@ export function ModelConfigDialog({
 														<Zap className="size-4 text-violet-600 dark:text-violet-400 mt-0.5 shrink-0" />
 														<div>
 															<p className="text-sm font-medium text-violet-900 dark:text-violet-100">
-																Rate Limit Protection
+																{t("rate_limit_protection")}
 															</p>
 															<p className="text-xs text-violet-700 dark:text-violet-300">
-																Automatically handles rate limits with cooldowns and retries
+																{t("handles_rate_limits")}
 															</p>
 														</div>
 													</div>
@@ -324,10 +325,10 @@ export function ModelConfigDialog({
 														<Zap className="size-4 text-violet-600 dark:text-violet-400 mt-0.5 shrink-0" />
 														<div>
 															<p className="text-sm font-medium text-violet-900 dark:text-violet-100">
-																Automatic Failover
+																{t("automatic_failover")}
 															</p>
 															<p className="text-xs text-violet-700 dark:text-violet-300">
-																Falls back to other providers if one becomes unavailable
+																{t("failover_desc")}
 															</p>
 														</div>
 													</div>
@@ -341,14 +342,14 @@ export function ModelConfigDialog({
 											<div className="grid gap-4 sm:grid-cols-2">
 												<div className="space-y-1.5">
 													<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-														Configuration Name
+														{t("config_name")}
 													</div>
 													<p className="text-sm font-medium">{config.name}</p>
 												</div>
 												{config.description && (
 													<div className="space-y-1.5">
 														<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-															Description
+															{t("description")}
 														</div>
 														<p className="text-sm text-muted-foreground">{config.description}</p>
 													</div>
@@ -360,13 +361,13 @@ export function ModelConfigDialog({
 											<div className="grid gap-4 sm:grid-cols-2">
 												<div className="space-y-1.5">
 													<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-														Provider
+														{t("provider")}
 													</div>
 													<p className="text-sm font-medium">{config.provider}</p>
 												</div>
 												<div className="space-y-1.5">
 													<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-														Model
+														{t("model")}
 													</div>
 													<p className="text-sm font-medium font-mono">{config.model_name}</p>
 												</div>
@@ -377,13 +378,13 @@ export function ModelConfigDialog({
 											<div className="grid gap-4 sm:grid-cols-2">
 												<div className="space-y-2">
 													<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-														Citations
+														{t("citations_label")}
 													</div>
 													<Badge
 														variant={config.citations_enabled ? "default" : "secondary"}
 														className="w-fit"
 													>
-														{config.citations_enabled ? "Enabled" : "Disabled"}
+														{config.citations_enabled ? t("enabled") : t("disabled")}
 													</Badge>
 												</div>
 											</div>
@@ -393,7 +394,7 @@ export function ModelConfigDialog({
 													<div className="h-px bg-border/50" />
 													<div className="space-y-1.5">
 														<div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-															System Instructions
+															{t("system_instructions")}
 														</div>
 														<div className="p-3 rounded-lg bg-muted/50 border border-border/50">
 															<p className="text-xs font-mono text-muted-foreground whitespace-pre-wrap line-clamp-10">
@@ -440,7 +441,7 @@ export function ModelConfigDialog({
 									disabled={isSubmitting}
 									className="text-sm h-9"
 								>
-									Cancel
+									{t("cancel")}
 								</Button>
 								{mode === "create" || (!isGlobal && !isAutoMode && config) ? (
 									<Button
@@ -452,12 +453,12 @@ export function ModelConfigDialog({
 										{isSubmitting ? (
 											<>
 												<Spinner size="sm" />
-												{mode === "edit" ? "Saving" : "Creating"}
+												{mode === "edit" ? t("saving") : t("creating")}
 											</>
 										) : mode === "edit" ? (
-											"Save Changes"
+											t("save_changes")
 										) : (
-											"Create & Use"
+											t("create_use")
 										)}
 									</Button>
 								) : isAutoMode ? (
@@ -466,7 +467,7 @@ export function ModelConfigDialog({
 										onClick={handleUseGlobalConfig}
 										disabled={isSubmitting}
 									>
-										{isSubmitting ? "Loading..." : "Use Auto Mode"}
+										{isSubmitting ? t("saving") : t("use_auto_mode")}
 									</Button>
 								) : isGlobal && config ? (
 									<Button
@@ -474,7 +475,7 @@ export function ModelConfigDialog({
 										onClick={handleUseGlobalConfig}
 										disabled={isSubmitting}
 									>
-										{isSubmitting ? "Loading..." : "Use This Model"}
+										{isSubmitting ? t("saving") : t("use_this_model")}
 									</Button>
 								) : null}
 							</div>
