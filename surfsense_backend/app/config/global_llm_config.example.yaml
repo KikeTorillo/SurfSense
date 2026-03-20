@@ -246,6 +246,36 @@ global_image_generation_configs:
   #   rpm: 30
   #   litellm_params: {}
 
+# =============================================================================
+# TTS (Text-to-Speech) Configuration
+# =============================================================================
+# These configurations power podcast audio generation using litellm.aspeech()
+# or local TTS services like Kokoro.
+#
+# Supported providers: KOKORO (local), OPENAI, AZURE, VERTEX_AI
+# No Auto mode for TTS — typically one service is active.
+
+global_tts_configs:
+  # Example: Local Kokoro TTS (default, no API key needed)
+  - id: -1
+    name: "Kokoro (Local)"
+    description: "Local Kokoro TTS service — free, no API key required"
+    provider: "KOKORO"
+    model_name: "local/kokoro"
+    api_key: ""
+    api_base: ""
+    litellm_params: {}
+
+  # Example: OpenAI TTS
+  # - id: -2
+  #   name: "OpenAI TTS-1"
+  #   description: "OpenAI text-to-speech with natural voices"
+  #   provider: "OPENAI"
+  #   model_name: "openai/tts-1"
+  #   api_key: "sk-your-openai-api-key-here"
+  #   api_base: ""
+  #   litellm_params: {}
+
 # Notes:
 # - ID 0 is reserved for "Auto" mode - uses LiteLLM Router for load balancing
 # - Use negative IDs to distinguish global configs from user configs (NewLLMConfig in DB)

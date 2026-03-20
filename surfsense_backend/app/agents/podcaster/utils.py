@@ -9,32 +9,40 @@ def resolve_speaker_voice(
     global_tts_service: str,
     global_tts_api_base: Optional[str] = None,
     global_tts_api_key: Optional[str] = None,
+    search_space_tts_config: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """
-    Resolve TTS parameters for a specific speaker using 3-level fallback:
+    Resolve TTS parameters for a specific speaker using 4-level fallback:
       1. Speaker-level override
       2. Profile-level default
-      3. Global env config
+      3. Search Space TTSConfig (from DB)
+      4. Global env config
 
     Returns dict with keys: provider, voice, api_base, api_key
     """
+    ss_provider = search_space_tts_config.get("provider_string") if search_space_tts_config else None
+
     # Provider
-    provider = speaker.tts_provider or profile.tts_provider or global_tts_service
+    provider = speaker.tts_provider or profile.tts_provider or ss_provider or global_tts_service
 
     # Voice ID always comes from the speaker
     voice = speaker.voice_id
 
-    # API base: speaker config → global
+    # API base: speaker config → search space config → global
     api_base = None
     if speaker.tts_config and speaker.tts_config.get("api_base"):
         api_base = speaker.tts_config["api_base"]
+    elif search_space_tts_config and search_space_tts_config.get("api_base"):
+        api_base = search_space_tts_config["api_base"]
     elif global_tts_api_base:
         api_base = global_tts_api_base
 
-    # API key: speaker config → global
+    # API key: speaker config → search space config → global
     api_key = None
     if speaker.tts_config and speaker.tts_config.get("api_key"):
         api_key = speaker.tts_config["api_key"]
+    elif search_space_tts_config and search_space_tts_config.get("api_key"):
+        api_key = search_space_tts_config["api_key"]
     elif global_tts_api_key:
         api_key = global_tts_api_key
 

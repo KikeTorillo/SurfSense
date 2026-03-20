@@ -236,6 +236,18 @@ class ImageGenProvider(StrEnum):
     NSCALE = "NSCALE"
 
 
+class TTSProvider(StrEnum):
+    """
+    Enum for TTS providers supported by LiteLLM speech API.
+    See: https://docs.litellm.ai/docs/text_to_speech
+    """
+
+    KOKORO = "KOKORO"
+    OPENAI = "OPENAI"
+    AZURE = "AZURE"
+    VERTEX_AI = "VERTEX_AI"
+
+
 class LogLevel(StrEnum):
     DEBUG = "DEBUG"
     INFO = "INFO"
@@ -341,6 +353,11 @@ class Permission(StrEnum):
     IMAGE_GENERATIONS_READ = "image_generations:read"
     IMAGE_GENERATIONS_DELETE = "image_generations:delete"
 
+    # TTS Configs
+    TTS_CONFIGS_CREATE = "tts_configs:create"
+    TTS_CONFIGS_READ = "tts_configs:read"
+    TTS_CONFIGS_DELETE = "tts_configs:delete"
+
     # Connectors
     CONNECTORS_CREATE = "connectors:create"
     CONNECTORS_READ = "connectors:read"
@@ -405,6 +422,9 @@ DEFAULT_ROLE_PERMISSIONS = {
         # Image Generations (create and read, no delete)
         Permission.IMAGE_GENERATIONS_CREATE.value,
         Permission.IMAGE_GENERATIONS_READ.value,
+        # TTS Configs (create and read, no delete)
+        Permission.TTS_CONFIGS_CREATE.value,
+        Permission.TTS_CONFIGS_READ.value,
         # Connectors (no delete)
         Permission.CONNECTORS_CREATE.value,
         Permission.CONNECTORS_READ.value,
@@ -436,6 +456,8 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.PODCASTS_READ.value,
         # Image Generations (read only)
         Permission.IMAGE_GENERATIONS_READ.value,
+        # TTS Configs (read only)
+        Permission.TTS_CONFIGS_READ.value,
         # Connectors (read only)
         Permission.CONNECTORS_READ.value,
         # Logs (read only)
@@ -1194,6 +1216,44 @@ class ImageGenerationConfig(BaseModel, TimestampMixin):
     user = relationship("User", back_populates="image_generation_configs")
 
 
+class TTSConfig(BaseModel, TimestampMixin):
+    """
+    Dedicated configuration table for TTS (text-to-speech) models.
+
+    Separate from NewLLMConfig because TTS models only need provider credentials
+    and model parameters, not system instructions or citations.
+    """
+
+    __tablename__ = "tts_configs"
+
+    name = Column(String(100), nullable=False, index=True)
+    description = Column(String(500), nullable=True)
+
+    # Provider & model (uses TTSProvider)
+    provider = Column(SQLAlchemyEnum(TTSProvider), nullable=False)
+    custom_provider = Column(String(100), nullable=True)
+    model_name = Column(String(100), nullable=False)
+
+    # Credentials (nullable — Kokoro doesn't need an API key)
+    api_key = Column(String, nullable=True)
+    api_base = Column(String(500), nullable=True)
+
+    # Additional litellm parameters
+    litellm_params = Column(JSON, nullable=True, default={})
+
+    # Relationships
+    search_space_id = Column(
+        Integer, ForeignKey("searchspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    search_space = relationship("SearchSpace", back_populates="tts_configs")
+
+    # User who created this config
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    user = relationship("User", back_populates="tts_configs")
+
+
 class ImageGeneration(BaseModel, TimestampMixin):
     """
     Stores image generation requests and results using litellm.aimage_generation().
@@ -1282,6 +1342,9 @@ class SearchSpace(BaseModel, TimestampMixin):
     image_generation_config_id = Column(
         Integer, nullable=True, default=0
     )  # For image generation, defaults to Auto mode
+    tts_config_id = Column(
+        Integer, nullable=True, default=None
+    )  # For TTS/podcast audio generation
 
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
@@ -1356,6 +1419,12 @@ class SearchSpace(BaseModel, TimestampMixin):
         "ImageGenerationConfig",
         back_populates="search_space",
         order_by="ImageGenerationConfig.id",
+        cascade="all, delete-orphan",
+    )
+    tts_configs = relationship(
+        "TTSConfig",
+        back_populates="search_space",
+        order_by="TTSConfig.id",
         cascade="all, delete-orphan",
     )
 
@@ -1806,6 +1875,13 @@ if config.AUTH_TYPE == "GOOGLE":
             passive_deletes=True,
         )
 
+        # TTS configs created by this user
+        tts_configs = relationship(
+            "TTSConfig",
+            back_populates="user",
+            passive_deletes=True,
+        )
+
         # User memories for personalized AI responses
         memories = relationship(
             "UserMemory",
@@ -1904,6 +1980,13 @@ else:
         # Image generation configs created by this user
         image_generation_configs = relationship(
             "ImageGenerationConfig",
+            back_populates="user",
+            passive_deletes=True,
+        )
+
+        # TTS configs created by this user
+        tts_configs = relationship(
+            "TTSConfig",
             back_populates="user",
             passive_deletes=True,
         )

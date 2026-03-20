@@ -96,6 +96,12 @@ from .reports import (
     ReportRead,
     ReportVersionInfo,
 )
+from .tts_config import (
+    GlobalTTSConfigRead,
+    TTSConfigCreate,
+    TTSConfigRead,
+    TTSConfigUpdate,
+)
 from .search_source_connector import (
     MCPConnectorCreate,
     MCPConnectorRead,
@@ -141,6 +147,7 @@ __all__ = [
     "ExtensionDocumentMetadata",
     "GlobalImageGenConfigRead",
     "GlobalNewLLMConfigRead",
+    "GlobalTTSConfigRead",
     "GoogleDriveIndexRequest",
     "GoogleDriveIndexingOptions",
     # Base schemas
@@ -235,6 +242,10 @@ __all__ = [
     "ThreadHistoryLoadResponse",
     "ThreadListItem",
     "ThreadListResponse",
+    # TTS Config schemas
+    "TTSConfigCreate",
+    "TTSConfigRead",
+    "TTSConfigUpdate",
     "TimestampModel",
     # User schemas
     "UserCreate",

@@ -40,6 +40,11 @@ export const cacheKeys = {
 		byId: (configId: number) => ["image-gen-configs", "detail", configId] as const,
 		global: () => ["image-gen-configs", "global"] as const,
 	},
+	ttsConfigs: {
+		all: (searchSpaceId: number) => ["tts-configs", searchSpaceId] as const,
+		byId: (configId: number) => ["tts-configs", "detail", configId] as const,
+		global: () => ["tts-configs", "global"] as const,
+	},
 	podcastProfiles: {
 		speakers: (searchSpaceId: number) => ["podcast-profiles", "speakers", searchSpaceId] as const,
 		episodes: (searchSpaceId: number) => ["podcast-profiles", "episodes", searchSpaceId] as const,

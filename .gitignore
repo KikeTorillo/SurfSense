@@ -1,6 +1,7 @@
 .flashrank_cache*
 ./surfsense_backend/podcasts/
 .env
+surfsense_backend/app/config/global_llm_config.yaml
 node_modules/
 .ruff_cache/
 .venv

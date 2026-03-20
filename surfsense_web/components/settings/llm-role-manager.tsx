@@ -8,6 +8,7 @@ import {
 	CircleDashed,
 	FileText,
 	ImageIcon,
+	Mic,
 	RefreshCw,
 	RotateCcw,
 	Save,
@@ -26,6 +27,7 @@ import {
 	llmPreferencesAtom,
 	newLLMConfigsAtom,
 } from "@/atoms/new-llm-config/new-llm-config-query.atoms";
+import { globalTTSConfigsAtom, ttsConfigsAtom } from "@/atoms/tts-config/tts-config-query.atoms";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -72,6 +74,15 @@ const ROLE_DESCRIPTIONS = {
 		prefKey: "image_generation_config_id" as const,
 		configType: "image" as const,
 	},
+	tts: {
+		icon: Mic,
+		title: "TTS Model",
+		description: "Text-to-speech model for podcast audio generation",
+		color: "text-orange-600 dark:text-orange-400",
+		bgColor: "bg-orange-500/10",
+		prefKey: "tts_config_id" as const,
+		configType: "tts" as const,
+	},
 };
 
 interface LLMRoleManagerProps {
@@ -104,6 +115,18 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 		error: globalImageConfigsError,
 	} = useAtomValue(globalImageGenConfigsAtom);
 
+	// TTS configs
+	const {
+		data: userTTSConfigs = [],
+		isFetching: ttsConfigsLoading,
+		error: ttsConfigsError,
+	} = useAtomValue(ttsConfigsAtom);
+	const {
+		data: globalTTSConfigs = [],
+		isFetching: globalTTSConfigsLoading,
+		error: globalTTSConfigsError,
+	} = useAtomValue(globalTTSConfigsAtom);
+
 	// Preferences
 	const {
 		data: preferences = {},
@@ -117,6 +140,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 		agent_llm_id: preferences.agent_llm_id ?? "",
 		document_summary_llm_id: preferences.document_summary_llm_id ?? "",
 		image_generation_config_id: preferences.image_generation_config_id ?? "",
+		tts_config_id: preferences.tts_config_id ?? "",
 	});
 
 	const [hasChanges, setHasChanges] = useState(false);
@@ -127,6 +151,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 			agent_llm_id: preferences.agent_llm_id ?? "",
 			document_summary_llm_id: preferences.document_summary_llm_id ?? "",
 			image_generation_config_id: preferences.image_generation_config_id ?? "",
+			tts_config_id: preferences.tts_config_id ?? "",
 		};
 		setAssignments(newAssignments);
 		setHasChanges(false);
@@ -144,6 +169,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 			agent_llm_id: preferences.agent_llm_id ?? "",
 			document_summary_llm_id: preferences.document_summary_llm_id ?? "",
 			image_generation_config_id: preferences.image_generation_config_id ?? "",
+			tts_config_id: preferences.tts_config_id ?? "",
 		};
 
 		const hasChangesNow = Object.keys(newAssignments).some(
@@ -165,6 +191,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 			agent_llm_id: toNumericOrUndefined(assignments.agent_llm_id),
 			document_summary_llm_id: toNumericOrUndefined(assignments.document_summary_llm_id),
 			image_generation_config_id: toNumericOrUndefined(assignments.image_generation_config_id),
+			tts_config_id: toNumericOrUndefined(assignments.tts_config_id),
 		};
 
 		await updatePreferences({
@@ -183,6 +210,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 			agent_llm_id: preferences.agent_llm_id ?? "",
 			document_summary_llm_id: preferences.document_summary_llm_id ?? "",
 			image_generation_config_id: preferences.image_generation_config_id ?? "",
+			tts_config_id: preferences.tts_config_id ?? "",
 		});
 		setHasChanges(false);
 	};
@@ -210,19 +238,30 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 		...(userImageConfigs ?? []).filter((config) => config.id && config.id.toString().trim() !== ""),
 	];
 
+	// Combine global and custom TTS configs
+	const allTTSConfigs = [
+		...globalTTSConfigs.map((config) => ({ ...config, is_global: true })),
+		...(userTTSConfigs ?? []).filter((config) => config.id && config.id.toString().trim() !== ""),
+	];
+
 	const isLoading =
 		configsLoading ||
 		preferencesLoading ||
 		globalConfigsLoading ||
 		imageConfigsLoading ||
-		globalImageConfigsLoading;
+		globalImageConfigsLoading ||
+		ttsConfigsLoading ||
+		globalTTSConfigsLoading;
 	const hasError =
 		configsError ||
 		preferencesError ||
 		globalConfigsError ||
 		imageConfigsError ||
-		globalImageConfigsError;
-	const hasAnyConfigs = allLLMConfigs.length > 0 || allImageConfigs.length > 0;
+		globalImageConfigsError ||
+		ttsConfigsError ||
+		globalTTSConfigsError;
+	const hasAnyConfigs =
+		allLLMConfigs.length > 0 || allImageConfigs.length > 0 || allTTSConfigs.length > 0;
 
 	return (
 		<div className="space-y-5 md:space-y-6">
@@ -273,7 +312,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 			{/* Loading Skeleton */}
 			{isLoading && (
 				<div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-					{["skeleton-a", "skeleton-b", "skeleton-c"].map((key) => (
+					{["skeleton-a", "skeleton-b", "skeleton-c", "skeleton-d"].map((key) => (
 						<Card key={key} className="border-border/60">
 							<CardContent className="p-4 md:p-5 space-y-4">
 								{/* Header: icon + title + status */}
@@ -330,15 +369,26 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 				>
 					{Object.entries(ROLE_DESCRIPTIONS).map(([key, role], index) => {
 						const IconComponent = role.icon;
+						const isTTSRole = role.configType === "tts";
 						const isImageRole = role.configType === "image";
 						const currentAssignment = assignments[role.prefKey as keyof typeof assignments];
 
 						// Pick the right config lists based on role type
-						const roleGlobalConfigs = isImageRole ? globalImageConfigs : globalConfigs;
-						const roleUserConfigs = isImageRole
-							? (userImageConfigs ?? []).filter((c) => c.id && c.id.toString().trim() !== "")
-							: newLLMConfigs.filter((c) => c.id && c.id.toString().trim() !== "");
-						const roleAllConfigs = isImageRole ? allImageConfigs : allLLMConfigs;
+						const roleGlobalConfigs = isTTSRole
+							? globalTTSConfigs
+							: isImageRole
+								? globalImageConfigs
+								: globalConfigs;
+						const roleUserConfigs = isTTSRole
+							? (userTTSConfigs ?? []).filter((c) => c.id && c.id.toString().trim() !== "")
+							: isImageRole
+								? (userImageConfigs ?? []).filter((c) => c.id && c.id.toString().trim() !== "")
+								: newLLMConfigs.filter((c) => c.id && c.id.toString().trim() !== "");
+						const roleAllConfigs = isTTSRole
+							? allTTSConfigs
+							: isImageRole
+								? allImageConfigs
+								: allLLMConfigs;
 
 						const assignedConfig = roleAllConfigs.find((config) => config.id === currentAssignment);
 						const isAssigned =

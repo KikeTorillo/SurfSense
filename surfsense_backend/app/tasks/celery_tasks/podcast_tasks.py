@@ -12,7 +12,7 @@ from app.agents.podcaster.models import SpeakerProfile
 from app.agents.podcaster.state import State as PodcasterState
 from app.celery_app import celery_app
 from app.config import config
-from app.db import Podcast, PodcastEpisodeProfile, PodcastSpeakerProfile, PodcastStatus
+from app.db import Podcast, PodcastEpisodeProfile, PodcastSpeakerProfile, PodcastStatus, SearchSpace, TTSConfig
 from app.tasks.celery_tasks import get_celery_session_maker
 
 logger = logging.getLogger(__name__)
@@ -151,6 +151,63 @@ async def _load_profiles(
     return speaker_profile, episode_row, use_legacy
 
 
+_TTS_PROVIDER_TO_LITELLM = {
+    "KOKORO": "local/kokoro",
+    "OPENAI": "openai",
+    "AZURE": "azure",
+    "VERTEX_AI": "vertex_ai",
+}
+
+
+async def _load_search_space_tts_config(
+    session, search_space_id: int
+) -> Optional[dict]:
+    """Load the TTSConfig assigned to a search space, if any.
+
+    Supports both positive IDs (DB TTSConfig) and negative IDs (global YAML configs).
+    """
+    result = await session.execute(
+        select(SearchSpace).filter(SearchSpace.id == search_space_id)
+    )
+    search_space = result.scalars().first()
+    if not search_space or not search_space.tts_config_id:
+        return None
+
+    tts_config_id = search_space.tts_config_id
+
+    # Global config (negative ID) — read from YAML
+    if tts_config_id < 0:
+        for cfg in config.GLOBAL_TTS_CONFIGS:
+            if cfg.get("id") == tts_config_id:
+                # Global configs store model_name already as litellm model string
+                # (e.g., "local/kokoro", "openai/tts-1")
+                return {
+                    "provider_string": cfg.get("model_name", ""),
+                    "api_base": cfg.get("api_base") or None,
+                    "api_key": cfg.get("api_key") or None,
+                }
+        return None
+
+    # DB config (positive ID)
+    result = await session.execute(
+        select(TTSConfig).filter(TTSConfig.id == tts_config_id)
+    )
+    tts_cfg = result.scalars().first()
+    if not tts_cfg:
+        return None
+
+    provider_str = _TTS_PROVIDER_TO_LITELLM.get(
+        tts_cfg.provider.value if tts_cfg.provider else "", ""
+    )
+    model_string = f"{provider_str}/{tts_cfg.model_name}" if provider_str else tts_cfg.model_name
+
+    return {
+        "provider_string": model_string,
+        "api_base": tts_cfg.api_base,
+        "api_key": tts_cfg.api_key,
+    }
+
+
 async def _generate_content_podcast(
     podcast_id: int,
     source_content: str,
@@ -186,6 +243,11 @@ async def _generate_content_podcast(
                 language = episode_row.language or "en"
                 briefing = episode_row.default_briefing or ""
 
+            # Load TTS config from search space
+            search_space_tts_config = await _load_search_space_tts_config(
+                session, search_space_id
+            )
+
             graph_config = {
                 "configurable": {
                     "podcast_title": podcast.title,
@@ -206,6 +268,7 @@ async def _generate_content_podcast(
                 num_segments=num_segments,
                 language=language,
                 speaker_profile=speaker_profile,
+                search_space_tts_config=search_space_tts_config,
             )
 
             graph_result = await podcaster_graph.ainvoke(

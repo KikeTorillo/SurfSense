@@ -149,6 +149,19 @@ cd surfsense_web && npx @biomejs/biome check --write .  # auto-fix
 - `Permission` enum en `app/db.py`
 - `check_permission()` en `app/utils/rbac.py`
 
+### Global Configs (YAML)
+Configuraciones preconfiguradas por el admin, disponibles para todos los usuarios sin crear configs manuales. Usan IDs negativos para distinguirse de configs de usuario (IDs positivos).
+
+- **Archivo**: `app/config/global_llm_config.yaml` (gitignored, contiene keys)
+- **Ejemplo**: `app/config/global_llm_config.example.yaml`
+- **Secciones**:
+  - `global_llm_configs:` → LLMs (con Auto mode ID 0 + Router)
+  - `global_image_generation_configs:` → Image Gen (con Auto mode ID 0 + Router)
+  - `global_tts_configs:` → TTS (sin Auto mode — un solo servicio activo)
+- **Flujo**: YAML → `load_global_*_configs()` en `config/__init__.py` → `config.GLOBAL_*_CONFIGS` → `GET /global-*-configs` → frontend dropdown
+- **Frontend**: `atoms/<feature>/query.atoms.ts` (atom `global*Atom`) → `llm-role-manager.tsx` (dropdown con secciones "Global Configurations" / "Your Configurations")
+- **Resolución en tareas**: `podcast_tasks.py` → `_load_search_space_tts_config()` maneja IDs negativos leyendo de `GLOBAL_TTS_CONFIGS`
+
 ## Convenciones de código
 
 ### Frontend (Biome)

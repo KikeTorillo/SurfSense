@@ -102,6 +102,27 @@ def load_global_image_gen_configs():
         return []
 
 
+def load_global_tts_configs():
+    """
+    Load global TTS configurations from YAML file.
+
+    Returns:
+        list: List of global TTS config dictionaries, or empty list
+    """
+    global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
+
+    if not global_config_file.exists():
+        return []
+
+    try:
+        with open(global_config_file, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+            return data.get("global_tts_configs", [])
+    except Exception as e:
+        print(f"Warning: Failed to load global TTS configs: {e}")
+        return []
+
+
 def load_image_gen_router_settings():
     """
     Load router settings for image generation Auto mode from YAML file.
@@ -310,6 +331,9 @@ class Config:
 
     # Router settings for Image Generation Auto mode
     IMAGE_GEN_ROUTER_SETTINGS = load_image_gen_router_settings()
+
+    # Global TTS Configurations (optional)
+    GLOBAL_TTS_CONFIGS = load_global_tts_configs()
 
     # Chonkie Configuration | Edit this to your needs
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")

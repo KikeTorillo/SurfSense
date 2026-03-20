@@ -54,3 +54,6 @@ class State:
     outline: Optional[Outline] = None
     transcript: list[Dialogue] = field(default_factory=list)
     audio_clips: list[str] = field(default_factory=list)
+
+    # TTS config from search space (loaded from DB)
+    search_space_tts_config: Optional[dict] = None

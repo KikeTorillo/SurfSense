@@ -252,20 +252,93 @@ export const globalImageGenConfig = z.object({
 export const getGlobalImageGenConfigsResponse = z.array(globalImageGenConfig);
 
 // =============================================================================
+// TTS Config (separate table — for podcast audio generation)
+// =============================================================================
+
+/**
+ * TTSProvider enum - providers that support text-to-speech
+ */
+export const ttsProviderEnum = z.enum(["KOKORO", "OPENAI", "AZURE", "VERTEX_AI"]);
+
+export type TTSProvider = z.infer<typeof ttsProviderEnum>;
+
+/**
+ * TTSConfig - user-created TTS model configs
+ */
+export const ttsConfig = z.object({
+	id: z.number(),
+	name: z.string().max(100),
+	description: z.string().max(500).nullable().optional(),
+	provider: ttsProviderEnum,
+	custom_provider: z.string().max(100).nullable().optional(),
+	model_name: z.string().max(100),
+	api_key: z.string().nullable().optional(),
+	api_base: z.string().max(500).nullable().optional(),
+	litellm_params: z.record(z.string(), z.any()).nullable().optional(),
+	created_at: z.string(),
+	search_space_id: z.number(),
+	user_id: z.string(),
+});
+
+export const createTTSConfigRequest = ttsConfig.omit({
+	id: true,
+	created_at: true,
+	user_id: true,
+});
+
+export const createTTSConfigResponse = ttsConfig;
+
+export const getTTSConfigsResponse = z.array(ttsConfig);
+
+export const updateTTSConfigRequest = z.object({
+	id: z.number(),
+	data: ttsConfig
+		.omit({ id: true, created_at: true, search_space_id: true, user_id: true })
+		.partial(),
+});
+
+export const updateTTSConfigResponse = ttsConfig;
+
+export const deleteTTSConfigResponse = z.object({
+	message: z.string(),
+	id: z.number(),
+});
+
+/**
+ * Global TTS Config - from YAML, has negative IDs
+ * No Auto mode for TTS — typically one service is active.
+ */
+export const globalTTSConfig = z.object({
+	id: z.number(),
+	name: z.string(),
+	description: z.string().nullable().optional(),
+	provider: z.string(),
+	model_name: z.string(),
+	api_base: z.string().nullable().optional(),
+	litellm_params: z.record(z.string(), z.any()).nullable().optional(),
+	is_global: z.literal(true),
+});
+
+export const getGlobalTTSConfigsResponse = z.array(globalTTSConfig);
+
+// =============================================================================
 // LLM Preferences (Role Assignments)
 // =============================================================================
 
 /**
  * LLM Preferences schemas - for role assignments
  * image_generation uses image_generation_config_id (not llm_id)
+ * tts uses tts_config_id
  */
 export const llmPreferences = z.object({
 	agent_llm_id: z.union([z.number(), z.null()]).optional(),
 	document_summary_llm_id: z.union([z.number(), z.null()]).optional(),
 	image_generation_config_id: z.union([z.number(), z.null()]).optional(),
+	tts_config_id: z.union([z.number(), z.null()]).optional(),
 	agent_llm: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
 	document_summary_llm: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
 	image_generation_config: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
+	tts_config: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
 });
 
 /**
@@ -286,6 +359,7 @@ export const updateLLMPreferencesRequest = z.object({
 		agent_llm_id: true,
 		document_summary_llm_id: true,
 		image_generation_config_id: true,
+		tts_config_id: true,
 	}),
 });
 
@@ -337,6 +411,15 @@ export type UpdateImageGenConfigResponse = z.infer<typeof updateImageGenConfigRe
 export type DeleteImageGenConfigResponse = z.infer<typeof deleteImageGenConfigResponse>;
 export type GlobalImageGenConfig = z.infer<typeof globalImageGenConfig>;
 export type GetGlobalImageGenConfigsResponse = z.infer<typeof getGlobalImageGenConfigsResponse>;
+export type TTSConfig = z.infer<typeof ttsConfig>;
+export type CreateTTSConfigRequest = z.infer<typeof createTTSConfigRequest>;
+export type CreateTTSConfigResponse = z.infer<typeof createTTSConfigResponse>;
+export type GetTTSConfigsResponse = z.infer<typeof getTTSConfigsResponse>;
+export type UpdateTTSConfigRequest = z.infer<typeof updateTTSConfigRequest>;
+export type UpdateTTSConfigResponse = z.infer<typeof updateTTSConfigResponse>;
+export type DeleteTTSConfigResponse = z.infer<typeof deleteTTSConfigResponse>;
+export type GlobalTTSConfig = z.infer<typeof globalTTSConfig>;
+export type GetGlobalTTSConfigsResponse = z.infer<typeof getGlobalTTSConfigsResponse>;
 export type LLMPreferences = z.infer<typeof llmPreferences>;
 export type GetLLMPreferencesRequest = z.infer<typeof getLLMPreferencesRequest>;
 export type GetLLMPreferencesResponse = z.infer<typeof getLLMPreferencesResponse>;

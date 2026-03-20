@@ -129,14 +129,22 @@ async def create_merged_podcast_audio(
 
     merged_transcript = [starting_transcript, *transcript_entries]
 
-    # Create a temporary directory for audio files
-    temp_dir = Path("temp_audio")
-    temp_dir.mkdir(exist_ok=True)
+    # Create a temporary directory for audio files (use shared volume for Docker)
+    shared_base = Path(os.environ.get("TMPDIR", "/shared_tmp"))
+    temp_dir = shared_base / "temp_audio"
+    temp_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate a unique session ID for this podcast
     session_id = str(uuid.uuid4())
-    output_path = f"podcasts/{session_id}_podcast.mp3"
-    os.makedirs("podcasts", exist_ok=True)
+    podcast_dir = shared_base / "podcasts"
+    podcast_dir.mkdir(parents=True, exist_ok=True)
+    output_path = str(podcast_dir / f"{session_id}_podcast.mp3")
+
+    # Resolve TTS config: search space config → env vars
+    ss_tts = state.search_space_tts_config
+    tts_service = (ss_tts.get("provider_string") if ss_tts else None) or app_config.TTS_SERVICE
+    tts_api_base = (ss_tts.get("api_base") if ss_tts else None) or app_config.TTS_SERVICE_API_BASE
+    tts_api_key = (ss_tts.get("api_key") if ss_tts else None) or app_config.TTS_SERVICE_API_KEY
 
     # Generate audio for each transcript segment
     audio_files = []
@@ -151,10 +159,10 @@ async def create_merged_podcast_audio(
             dialog = segment.get("dialog", "")
 
         # Select voice based on speaker_id
-        voice = get_voice_for_provider(app_config.TTS_SERVICE, speaker_id)
+        voice = get_voice_for_provider(tts_service, speaker_id)
 
         # Generate a unique filename for this segment
-        if app_config.TTS_SERVICE == "local/kokoro":
+        if tts_service == "local/kokoro":
             # Kokoro generates WAV files
             filename = f"{temp_dir}/{session_id}_{index}.wav"
         else:
@@ -162,7 +170,7 @@ async def create_merged_podcast_audio(
             filename = f"{temp_dir}/{session_id}_{index}.mp3"
 
         try:
-            if app_config.TTS_SERVICE == "local/kokoro":
+            if tts_service == "local/kokoro":
                 # Use Kokoro TTS service
                 kokoro_service = await get_kokoro_tts_service(
                     lang_code="a"
@@ -172,11 +180,11 @@ async def create_merged_podcast_audio(
                 )
                 return audio_path
             else:
-                if app_config.TTS_SERVICE_API_BASE:
+                if tts_api_base:
                     response = await aspeech(
-                        model=app_config.TTS_SERVICE,
-                        api_base=app_config.TTS_SERVICE_API_BASE,
-                        api_key=app_config.TTS_SERVICE_API_KEY,
+                        model=tts_service,
+                        api_base=tts_api_base,
+                        api_key=tts_api_key,
                         voice=voice,
                         input=dialog,
                         max_retries=2,
@@ -184,8 +192,8 @@ async def create_merged_podcast_audio(
                     )
                 else:
                     response = await aspeech(
-                        model=app_config.TTS_SERVICE,
-                        api_key=app_config.TTS_SERVICE_API_KEY,
+                        model=tts_service,
+                        api_key=tts_api_key,
                         voice=voice,
                         input=dialog,
                         max_retries=2,
@@ -405,8 +413,9 @@ async def generate_audio(state: State, config: RunnableConfig) -> dict[str, Any]
     """Generate TTS audio for each dialogue entry with batched concurrency."""
     profile = state.speaker_profile
     session_id = str(uuid.uuid4())
-    temp_dir = Path("temp_audio")
-    temp_dir.mkdir(exist_ok=True)
+    shared_base = Path(os.environ.get("TMPDIR", "/shared_tmp"))
+    temp_dir = shared_base / "temp_audio"
+    temp_dir.mkdir(parents=True, exist_ok=True)
 
     BATCH_SIZE = 5
     audio_clips: list[str] = []
@@ -420,6 +429,7 @@ async def generate_audio(state: State, config: RunnableConfig) -> dict[str, Any]
             global_tts_service=app_config.TTS_SERVICE or "openai/tts-1",
             global_tts_api_base=app_config.TTS_SERVICE_API_BASE,
             global_tts_api_key=app_config.TTS_SERVICE_API_KEY,
+            search_space_tts_config=state.search_space_tts_config,
         )
 
         provider = voice_cfg["provider"]
@@ -468,8 +478,10 @@ async def generate_audio(state: State, config: RunnableConfig) -> dict[str, Any]
 async def combine_audio(state: State, config: RunnableConfig) -> dict[str, Any]:
     """Concatenate audio clips into a single MP3 using FFmpeg."""
     session_id = str(uuid.uuid4())
-    output_path = f"podcasts/{session_id}_podcast.mp3"
-    os.makedirs("podcasts", exist_ok=True)
+    shared_base = Path(os.environ.get("TMPDIR", "/shared_tmp"))
+    podcast_dir = shared_base / "podcasts"
+    podcast_dir.mkdir(parents=True, exist_ok=True)
+    output_path = str(podcast_dir / f"{session_id}_podcast.mp3")
 
     audio_files = state.audio_clips
     if not audio_files:
