@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { EnumConnectorName } from "@/contracts/enums/connector";
 import type { SearchSourceConnector } from "@/contracts/types/connector.types";
@@ -58,6 +59,18 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 	onManage,
 	onViewAccountsList,
 }) => {
+	const t = useTranslations("connectorPopup");
+
+	/** Resolve connector description: use translation if available, fallback to constant */
+	const descFor = (id: string, fallback: string): string => {
+		try {
+			// biome-ignore lint/suspicious/noExplicitAny: dynamic i18n key lookup
+			return t(`desc_${id}` as any);
+		} catch {
+			return fallback;
+		}
+	};
+
 	// Check if self-hosted mode (for showing self-hosted only connectors)
 	const selfHosted = isSelfHosted();
 
@@ -98,9 +111,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 			{filteredComposio.length > 0 && (
 				<section>
 					<div className="flex items-center gap-2 mb-4">
-						<h3 className="text-sm font-semibold text-muted-foreground">
-							Managed OAuth (Composio)
-						</h3>
+						<h3 className="text-sm font-semibold text-muted-foreground">{t("section_composio")}</h3>
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						{filteredComposio.map((connector) => {
@@ -130,7 +141,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 									key={connector.id}
 									id={connector.id}
 									title={connector.title}
-									description={connector.description}
+									description={descFor(connector.id, connector.description)}
 									connectorType={connector.connectorType}
 									isConnected={isConnected}
 									isConnecting={isConnecting}
@@ -154,7 +165,9 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 			{filteredOAuth.length > 0 && (
 				<section>
 					<div className="flex items-center gap-2 mb-4">
-						<h3 className="text-sm font-semibold text-muted-foreground">Quick Connect</h3>
+						<h3 className="text-sm font-semibold text-muted-foreground">
+							{t("section_quick_connect")}
+						</h3>
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						{filteredOAuth.map((connector) => {
@@ -184,7 +197,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 									key={connector.id}
 									id={connector.id}
 									title={connector.title}
-									description={connector.description}
+									description={descFor(connector.id, connector.description)}
 									connectorType={connector.connectorType}
 									isConnected={isConnected}
 									isConnecting={isConnecting}
@@ -208,7 +221,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 			{filteredOther.length > 0 && (
 				<section>
 					<div className="flex items-center gap-2 mb-4">
-						<h3 className="text-sm font-semibold text-muted-foreground">More Integrations</h3>
+						<h3 className="text-sm font-semibold text-muted-foreground">{t("section_more")}</h3>
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						{filteredOther.map((connector) => {
@@ -248,7 +261,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 									key={connector.id}
 									id={connector.id}
 									title={connector.title}
-									description={connector.description}
+									description={descFor(connector.id, connector.description)}
 									connectorType={connector.connectorType}
 									isConnected={isConnected}
 									isConnecting={isConnecting}
@@ -270,7 +283,9 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 			{filteredCrawlers.length > 0 && (
 				<section>
 					<div className="flex items-center gap-2 mb-4">
-						<h3 className="text-sm font-semibold text-muted-foreground">Content Sources</h3>
+						<h3 className="text-sm font-semibold text-muted-foreground">
+							{t("section_content_sources")}
+						</h3>
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 						{filteredCrawlers.map((crawler) => {
@@ -314,7 +329,7 @@ export const AllConnectorsTab: FC<AllConnectorsTabProps> = ({
 									key={crawler.id}
 									id={crawler.id}
 									title={crawler.title}
-									description={crawler.description}
+									description={descFor(crawler.id, crawler.description)}
 									connectorType={crawler.connectorType || undefined}
 									isConnected={isConnected}
 									isConnecting={isConnecting}

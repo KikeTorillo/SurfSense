@@ -343,14 +343,14 @@ export function LayoutDataProvider({ searchSpaceId, children }: LayoutDataProvid
 	const navItems: NavItem[] = useMemo(
 		() => [
 			{
-				title: "Inbox",
+				title: tSidebar("inbox"),
 				url: "#inbox",
 				icon: Inbox,
 				isActive: isInboxSidebarOpen,
 				badge: totalUnreadCount > 0 ? formatInboxCount(totalUnreadCount) : undefined,
 			},
 			{
-				title: "Documents",
+				title: tSidebar("documents"),
 				url: "#documents",
 				icon: SquareLibrary,
 				isActive: isMobile
@@ -359,7 +359,7 @@ export function LayoutDataProvider({ searchSpaceId, children }: LayoutDataProvid
 				statusIndicator: documentsProcessingStatus,
 			},
 			{
-				title: "Announcements",
+				title: tSidebar("announcements"),
 				url: "#announcements",
 				icon: Megaphone,
 				isActive: isAnnouncementsSidebarOpen,
@@ -375,6 +375,7 @@ export function LayoutDataProvider({ searchSpaceId, children }: LayoutDataProvid
 			isAnnouncementsSidebarOpen,
 			announcementUnreadCount,
 			documentsProcessingStatus,
+			tSidebar,
 		]
 	);
 

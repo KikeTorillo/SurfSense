@@ -23,6 +23,7 @@ import {
 import { motion } from "motion/react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -143,6 +144,7 @@ const SKELETON_KEYS = Array.from({ length: PAGE_SIZE }, (_, i) => `skeleton-${i}
 export default function TeamManagementPage() {
 	const params = useParams();
 	const searchSpaceId = Number(params.search_space_id);
+	const t = useTranslations("team");
 
 	const { data: access = null, isLoading: accessLoading } = useAtomValue(myAccessAtom);
 
@@ -345,7 +347,7 @@ export default function TeamManagementPage() {
 							)}
 						</div>
 						<p className="hidden md:block text-sm text-muted-foreground">
-							{members.length} {members.length === 1 ? "member" : "members"}
+							{t("member_count", { count: members.length })}
 						</p>
 					</div>
 
@@ -357,19 +359,19 @@ export default function TeamManagementPage() {
 									<TableHead className="w-[45%] px-4 md:px-6 border-r border-border/40">
 										<span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground/70">
 											<User size={14} className="opacity-60 text-muted-foreground" />
-											Name
+											{t("name")}
 										</span>
 									</TableHead>
 									<TableHead className="hidden md:table-cell w-[25%] border-r border-border/40">
 										<span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground/70">
 											<Clock size={14} className="opacity-60 text-muted-foreground" />
-											Last logged in
+											{t("last_logged_in")}
 										</span>
 									</TableHead>
 									<TableHead className="w-[30%] px-4 md:px-6">
 										<span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground/70 justify-end">
 											<ShieldUser size={14} className="opacity-60 text-muted-foreground" />
-											Role
+											{t("role")}
 										</span>
 									</TableHead>
 								</TableRow>
@@ -406,7 +408,7 @@ export default function TeamManagementPage() {
 										<TableCell colSpan={3} className="text-center py-12">
 											<div className="flex flex-col items-center gap-2">
 												<Users className="h-8 w-8 text-muted-foreground/50" />
-												<p className="text-muted-foreground">No members yet</p>
+												<p className="text-muted-foreground">{t("no_members")}</p>
 											</div>
 										</TableCell>
 									</TableRow>
@@ -433,7 +435,7 @@ export default function TeamManagementPage() {
 									className="h-8 w-8 disabled:opacity-40"
 									onClick={() => setPageIndex(0)}
 									disabled={!canPrev}
-									aria-label="Go to first page"
+									aria-label={t("page_first")}
 								>
 									<ChevronFirst size={18} strokeWidth={2} />
 								</Button>
@@ -443,7 +445,7 @@ export default function TeamManagementPage() {
 									className="h-8 w-8 disabled:opacity-40"
 									onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
 									disabled={!canPrev}
-									aria-label="Go to previous page"
+									aria-label={t("page_previous")}
 								>
 									<ChevronLeft size={18} strokeWidth={2} />
 								</Button>
@@ -453,7 +455,7 @@ export default function TeamManagementPage() {
 									className="h-8 w-8 disabled:opacity-40"
 									onClick={() => setPageIndex((i) => (canNext ? i + 1 : i))}
 									disabled={!canNext}
-									aria-label="Go to next page"
+									aria-label={t("page_next")}
 								>
 									<ChevronRight size={18} strokeWidth={2} />
 								</Button>
@@ -463,7 +465,7 @@ export default function TeamManagementPage() {
 									className="h-8 w-8 disabled:opacity-40"
 									onClick={() => setPageIndex(lastPage)}
 									disabled={!canNext}
-									aria-label="Go to last page"
+									aria-label={t("page_last")}
 								>
 									<ChevronLast size={18} strokeWidth={2} />
 								</Button>
@@ -497,11 +499,12 @@ function MemberRow({
 	searchSpaceId: number;
 	index: number;
 }) {
+	const t = useTranslations("team");
 	const router = useRouter();
 	const initials = getAvatarInitials(member);
 	const avatarColor = getAvatarColor(member.user_id);
 	const displayName = member.user_display_name || member.user_email || "Unknown";
-	const roleName = member.is_owner ? "Owner" : member.role?.name || "No role";
+	const roleName = member.is_owner ? t("owner") : member.role?.name || t("no_role");
 	const showActions = !member.is_owner && (canManageRoles || canRemove);
 
 	return (
@@ -544,7 +547,7 @@ function MemberRow({
 			</TableCell>
 
 			<TableCell className="hidden md:table-cell w-[25%] py-2.5 text-sm text-foreground border-r border-border/40">
-				{member.user_last_login ? formatRelativeDate(member.user_last_login) : "Never"}
+				{member.user_last_login ? formatRelativeDate(member.user_last_login) : t("never")}
 			</TableCell>
 
 			<TableCell className="w-[30%] text-right py-2.5 px-4 md:px-6">
@@ -572,7 +575,7 @@ function MemberRow({
 											key={role.id}
 											onClick={() => onUpdateRole(member.id, role.id)}
 										>
-											Make {role.name}
+											{t("make_role", { name: role.name })}
 										</DropdownMenuItem>
 									))}
 							{canRemove && (
@@ -582,24 +585,23 @@ function MemberRow({
 											onSelect={(e) => e.preventDefault()}
 											className="text-destructive focus:text-destructive"
 										>
-											Remove
+											{t("remove")}
 										</DropdownMenuItem>
 									</AlertDialogTrigger>
 									<AlertDialogContent>
 										<AlertDialogHeader>
-											<AlertDialogTitle>Remove member?</AlertDialogTitle>
+											<AlertDialogTitle>{t("remove_member_title")}</AlertDialogTitle>
 											<AlertDialogDescription>
-												This will remove <span className="font-medium">{member.user_email}</span>{" "}
-												from this search space. They will lose access to all resources.
+												{t("remove_member_desc", { email: member.user_email })}
 											</AlertDialogDescription>
 										</AlertDialogHeader>
 										<AlertDialogFooter>
-											<AlertDialogCancel>Cancel</AlertDialogCancel>
+											<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
 											<AlertDialogAction
 												onClick={() => onRemoveMember(member.id)}
 												className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 											>
-												Remove
+												{t("remove")}
 											</AlertDialogAction>
 										</AlertDialogFooter>
 									</AlertDialogContent>
@@ -609,7 +611,7 @@ function MemberRow({
 							<DropdownMenuItem
 								onClick={() => router.push(`/dashboard/${searchSpaceId}/settings?tab=team-roles`)}
 							>
-								Manage Roles
+								{t("manage_roles")}
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
@@ -632,6 +634,7 @@ function CreateInviteDialog({
 	onCreateInvite: (data: CreateInviteRequest["data"]) => Promise<Invite>;
 	searchSpaceId: number;
 }) {
+	const t = useTranslations("team");
 	const [open, setOpen] = useState(false);
 	const [creating, setCreating] = useState(false);
 	const [name, setName] = useState("");
@@ -690,7 +693,7 @@ function CreateInviteDialog({
 		const link = `${window.location.origin}/invite/${createdInvite.invite_code}`;
 		navigator.clipboard.writeText(link);
 		setCopiedLink(true);
-		toast.success("Invite link copied to clipboard");
+		toast.success(t("link_copied"));
 	};
 
 	return (
@@ -701,7 +704,7 @@ function CreateInviteDialog({
 					className="gap-2 bg-black text-white dark:bg-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90"
 				>
 					<UserPlus className="h-4 w-4" />
-					Invite members
+					{t("invite_members")}
 				</Button>
 			</DialogTrigger>
 			<DialogContent
@@ -713,11 +716,9 @@ function CreateInviteDialog({
 						<DialogHeader>
 							<DialogTitle className="flex items-center gap-2">
 								<Check className="h-5 w-5 text-emerald-500" />
-								Invite Created!
+								{t("invite_created")}
 							</DialogTitle>
-							<DialogDescription>
-								Share this link to invite people to your search space.
-							</DialogDescription>
+							<DialogDescription>{t("share_link_desc")}</DialogDescription>
 						</DialogHeader>
 						<div className="space-y-3 py-2 md:py-4">
 							<div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
@@ -730,49 +731,49 @@ function CreateInviteDialog({
 							</div>
 							<div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
 								<span className="flex items-center gap-1">
-									{createdInvite.role?.name || "Default role"}
+									{createdInvite.role?.name || t("default_role")}
 								</span>
 								{createdInvite.max_uses && (
 									<span className="flex items-center gap-1">
 										<Hash className="h-3 w-3" />
-										Max {createdInvite.max_uses} uses
+										{t("max_uses_count", { count: createdInvite.max_uses })}
 									</span>
 								)}
 								{createdInvite.expires_at && (
 									<span className="flex items-center gap-1">
 										<Clock className="h-3 w-3" />
-										Expires {new Date(createdInvite.expires_at).toLocaleDateString()}
+										{t("expires_date", {
+											date: new Date(createdInvite.expires_at).toLocaleDateString(),
+										})}
 									</span>
 								)}
 							</div>
 						</div>
 						<DialogFooter>
-							<Button onClick={handleClose}>Done</Button>
+							<Button onClick={handleClose}>{t("done")}</Button>
 						</DialogFooter>
 					</>
 				) : (
 					<>
 						<DialogHeader>
-							<DialogTitle>Invite Members</DialogTitle>
-							<DialogDescription>
-								Create a link to invite people to this search space.
-							</DialogDescription>
+							<DialogTitle>{t("invite_title")}</DialogTitle>
+							<DialogDescription>{t("invite_desc")}</DialogDescription>
 						</DialogHeader>
 						<div className="space-y-3 py-2 md:py-4">
 							<div className="space-y-2">
-								<Label htmlFor="invite-name">Name (optional)</Label>
+								<Label htmlFor="invite-name">{t("name_optional")}</Label>
 								<Input
 									id="invite-name"
-									placeholder="e.g., Marketing team invite"
+									placeholder={t("name_placeholder")}
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="invite-role">Role</Label>
+								<Label htmlFor="invite-role">{t("role_label")}</Label>
 								<Select value={roleId} onValueChange={setRoleId}>
 									<SelectTrigger>
-										<SelectValue placeholder="Assign a role" />
+										<SelectValue placeholder={t("assign_role")} />
 									</SelectTrigger>
 									<SelectContent>
 										{assignableRoles.map((role) => (
@@ -780,7 +781,9 @@ function CreateInviteDialog({
 												<span className="flex items-center gap-2">
 													{role.name}
 													{role.is_default && (
-														<span className="text-xs text-muted-foreground">(default)</span>
+														<span className="text-xs text-muted-foreground">
+															{t("default_badge")}
+														</span>
 													)}
 												</span>
 											</SelectItem>
@@ -790,18 +793,18 @@ function CreateInviteDialog({
 							</div>
 							<div className="flex flex-col md:grid md:grid-cols-2 gap-3 md:gap-4">
 								<div className="space-y-2">
-									<Label htmlFor="max-uses">Max uses (optional)</Label>
+									<Label htmlFor="max-uses">{t("max_uses")}</Label>
 									<Input
 										id="max-uses"
 										type="number"
 										min="1"
-										placeholder="Unlimited"
+										placeholder={t("unlimited")}
 										value={maxUses}
 										onChange={(e) => setMaxUses(e.target.value)}
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label>Expires on (optional)</Label>
+									<Label>{t("expires_on")}</Label>
 									<Popover>
 										<PopoverTrigger asChild>
 											<Button
@@ -812,7 +815,7 @@ function CreateInviteDialog({
 												)}
 											>
 												<Calendar className="mr-2 h-4 w-4" />
-												{expiresAt ? expiresAt.toLocaleDateString() : "Never"}
+												{expiresAt ? expiresAt.toLocaleDateString() : t("never_expires")}
 											</Button>
 										</PopoverTrigger>
 										<PopoverContent className="w-auto p-0" align="start">
@@ -830,16 +833,16 @@ function CreateInviteDialog({
 						</div>
 						<DialogFooter className="gap-3 sm:gap-2">
 							<Button variant="secondary" onClick={handleClose}>
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button onClick={handleCreate} disabled={creating}>
 								{creating ? (
 									<>
 										<Spinner size="sm" className="mr-2" />
-										Creating
+										{t("creating")}
 									</>
 								) : (
-									"Create Invite"
+									t("create_invite")
 								)}
 							</Button>
 						</DialogFooter>
@@ -859,13 +862,14 @@ function AllInvitesDialog({
 	invites: Invite[];
 	onRevokeInvite: (inviteId: number) => Promise<boolean>;
 }) {
+	const t = useTranslations("team");
 	const [copiedId, setCopiedId] = useState<number | null>(null);
 
 	const copyLink = (invite: Invite) => {
 		const link = `${window.location.origin}/invite/${invite.invite_code}`;
 		navigator.clipboard.writeText(link);
 		setCopiedId(invite.id);
-		toast.success("Invite link copied");
+		toast.success(t("link_copied"));
 		setTimeout(() => setCopiedId(null), 2000);
 	};
 
@@ -874,7 +878,7 @@ function AllInvitesDialog({
 			<DialogTrigger asChild>
 				<Button variant="secondary" className="gap-2">
 					<Link2 className="h-4 w-4 rotate-315" />
-					Active invites
+					{t("active_invites")}
 					<span className="inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-neutral-700 text-neutral-200 text-xs font-medium">
 						{invites.length}
 					</span>
@@ -882,10 +886,9 @@ function AllInvitesDialog({
 			</DialogTrigger>
 			<DialogContent className="w-[92vw] max-w-[92vw] sm:max-w-lg p-4 md:p-6 select-none">
 				<DialogHeader>
-					<DialogTitle className="flex items-center gap-2">Active Invite Links</DialogTitle>
+					<DialogTitle className="flex items-center gap-2">{t("active_invite_links")}</DialogTitle>
 					<DialogDescription>
-						{invites.length} active {invites.length === 1 ? "invite" : "invites"}. Copy a link or
-						revoke access.
+						{t("active_invites_count", { count: invites.length })} {t("copy_revoke_desc")}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="max-h-[320px] overflow-y-auto -mx-1 px-1 space-y-3 py-2">
@@ -893,7 +896,9 @@ function AllInvitesDialog({
 						<div key={invite.id} className="rounded-lg border border-border/40 p-3 space-y-2.5">
 							<div className="flex items-center justify-between gap-2">
 								<div className="flex items-center gap-2 min-w-0">
-									<p className="text-sm font-medium truncate">{invite.name || "Unnamed invite"}</p>
+									<p className="text-sm font-medium truncate">
+										{invite.name || t("unnamed_invite")}
+									</p>
 									<div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground shrink-0">
 										{invite.role?.name && (
 											<span className="rounded bg-muted px-1.5 py-0.5">{invite.role.name}</span>
@@ -924,19 +929,16 @@ function AllInvitesDialog({
 									</AlertDialogTrigger>
 									<AlertDialogContent>
 										<AlertDialogHeader>
-											<AlertDialogTitle>Revoke invite?</AlertDialogTitle>
-											<AlertDialogDescription>
-												This will permanently delete this invite link. Anyone with this link will no
-												longer be able to join.
-											</AlertDialogDescription>
+											<AlertDialogTitle>{t("revoke_title")}</AlertDialogTitle>
+											<AlertDialogDescription>{t("revoke_desc")}</AlertDialogDescription>
 										</AlertDialogHeader>
 										<AlertDialogFooter>
-											<AlertDialogCancel>Cancel</AlertDialogCancel>
+											<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
 											<AlertDialogAction
 												onClick={() => onRevokeInvite(invite.id)}
 												className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 											>
-												Revoke
+												{t("revoke")}
 											</AlertDialogAction>
 										</AlertDialogFooter>
 									</AlertDialogContent>

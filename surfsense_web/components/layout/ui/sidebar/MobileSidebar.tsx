@@ -1,6 +1,7 @@
 "use client";
 
 import { PanelRightClose, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -82,6 +83,7 @@ export function MobileSidebar({
 	setTheme,
 	isLoadingChats = false,
 }: MobileSidebarProps) {
+	const tSidebar = useTranslations("sidebar");
 	const handleSearchSpaceSelect = (id: number) => {
 		onSearchSpaceSelect(id);
 	};
@@ -124,7 +126,7 @@ export function MobileSidebar({
 								className="h-10 w-10 shrink-0 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
 							>
 								<Plus className="h-5 w-5 text-muted-foreground" />
-								<span className="sr-only">Add search space</span>
+								<span className="sr-only">{tSidebar("add_search_space")}</span>
 							</Button>
 						</div>
 					</ScrollArea>

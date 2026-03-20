@@ -2,6 +2,7 @@
 
 import { useAtomValue } from "jotai";
 import { AlertCircle, Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { membersAtom, myAccessAtom } from "@/atoms/members/members-query.atoms";
@@ -20,6 +21,7 @@ interface PublicChatSnapshotsManagerProps {
 export function PublicChatSnapshotsManager({
 	searchSpaceId: _searchSpaceId,
 }: PublicChatSnapshotsManagerProps) {
+	const t = useTranslations("publicChatLinks");
 	const [deletingId, setDeletingId] = useState<number | undefined>();
 
 	// Data fetching
@@ -122,9 +124,7 @@ export function PublicChatSnapshotsManager({
 		return (
 			<Alert variant="destructive">
 				<AlertCircle className="h-4 w-4" />
-				<AlertDescription>
-					Failed to load public chat links. Please try again later.
-				</AlertDescription>
+				<AlertDescription>{t("load_error")}</AlertDescription>
 			</Alert>
 		);
 	}
@@ -134,9 +134,7 @@ export function PublicChatSnapshotsManager({
 		return (
 			<Alert variant="destructive">
 				<Info className="h-4 w-4" />
-				<AlertDescription>
-					You don't have permission to view public chat links in this search space.
-				</AlertDescription>
+				<AlertDescription>{t("no_permission")}</AlertDescription>
 			</Alert>
 		);
 	}
@@ -147,10 +145,7 @@ export function PublicChatSnapshotsManager({
 		<div className="space-y-4 md:space-y-5">
 			<Alert className="bg-muted/50 py-3 md:py-4">
 				<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
-				<AlertDescription className="text-xs md:text-sm">
-					Public chat links allow anyone with the URL to view a snapshot of a chat. These links do
-					not update when the original chat changes.
-				</AlertDescription>
+				<AlertDescription className="text-xs md:text-sm">{t("info_alert")}</AlertDescription>
 			</Alert>
 
 			<PublicChatSnapshotsList

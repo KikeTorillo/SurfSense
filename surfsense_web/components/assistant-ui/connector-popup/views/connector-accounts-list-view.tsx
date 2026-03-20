@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, Plus, Server } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -43,6 +44,8 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 	isConnecting = false,
 	addButtonText,
 }) => {
+	const t = useTranslations("connectorPopup");
+
 	// Get connector status
 	const { isConnectorEnabled, getConnectorStatusMessage } = useConnectorStatus();
 
@@ -55,7 +58,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 	// Determine button text - default to "Add Account" unless specified
 	const buttonText =
 		addButtonText ||
-		(connectorType === EnumConnectorName.MCP_CONNECTOR ? "Add New MCP Server" : "Add Account");
+		(connectorType === EnumConnectorName.MCP_CONNECTOR ? t("add_mcp_server") : t("add_account"));
 	const isMCP = connectorType === EnumConnectorName.MCP_CONNECTOR;
 
 	// Helper to get display name for connector (handles MCP server name extraction)
@@ -79,7 +82,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 					className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground mb-6 w-fit"
 				>
 					<ArrowLeft className="size-4" />
-					Back to connectors
+					{t("back_to_connectors")}
 				</button>
 
 				{/* Connector header */}
@@ -93,7 +96,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 								{connectorTitle}
 							</h2>
 							<p className="text-xs sm:text-base text-muted-foreground mt-1">
-								{statusMessage || "Manage your connector settings and sync configuration"}
+								{statusMessage || t("manage_settings_desc")}
 							</p>
 						</div>
 					</div>
@@ -118,7 +121,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 							)}
 						</div>
 						<span className="text-xs sm:text-sm font-medium">
-							{isConnecting ? "Connecting" : buttonText}
+							{isConnecting ? t("connecting") : buttonText}
 						</span>
 					</button>
 				</div>
@@ -137,12 +140,10 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 							)}
 						</div>
 						<h3 className="text-sm font-medium mb-1">
-							{isMCP ? "No MCP Servers" : `No ${connectorTitle} Accounts`}
+							{isMCP ? t("no_mcp_servers") : t("no_accounts", { title: connectorTitle })}
 						</h3>
 						<p className="text-xs text-muted-foreground max-w-[280px]">
-							{isMCP
-								? "Get started by adding your first Model Context Protocol server"
-								: `Get started by connecting your first ${connectorTitle} account`}
+							{isMCP ? t("get_started_mcp") : t("get_started_account", { title: connectorTitle })}
 						</p>
 					</div>
 				) : (
@@ -177,15 +178,17 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 										{isIndexing ? (
 											<p className="text-[11px] text-primary mt-1 flex items-center gap-1.5">
 												<Spinner size="xs" />
-												Syncing
+												{t("syncing")}
 											</p>
 										) : (
 											<p className="text-[10px] text-muted-foreground mt-1 whitespace-nowrap truncate">
 												{isIndexableConnector(connector.connector_type)
 													? connector.last_indexed_at
-														? `Last indexed: ${formatRelativeDate(connector.last_indexed_at)}`
-														: "Never indexed"
-													: "Active"}
+														? t("last_indexed", {
+																date: formatRelativeDate(connector.last_indexed_at),
+															})
+														: t("never_indexed")
+													: t("active_status")}
 											</p>
 										)}
 									</div>
@@ -195,7 +198,7 @@ export const ConnectorAccountsListView: FC<ConnectorAccountsListViewProps> = ({
 										className="h-8 text-[11px] px-3 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border-0 shadow-xs dark:bg-secondary dark:text-secondary-foreground dark:hover:bg-secondary/80 shrink-0"
 										onClick={() => onManage(connector)}
 									>
-										Manage
+										{t("manage")}
 									</Button>
 								</div>
 							);

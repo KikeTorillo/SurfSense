@@ -1,6 +1,7 @@
 "use client";
 
 import { Cable } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { getDocumentTypeLabel } from "@/app/dashboard/[search_space_id]/documents/(manage)/components/DocumentTypeIcon";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,8 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 	onManage,
 	onViewAccountsList,
 }) => {
+	const t = useTranslations("connectorPopup");
+
 	// Convert activeDocumentTypes array to Record for utility function
 	const documentTypeCounts = activeDocumentTypes.reduce(
 		(acc, [docType, count]) => {
@@ -44,16 +47,16 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 		{} as Record<string, number>
 	);
 
-	// Format document count (e.g., "1.2k docs", "500 docs", "1.5M docs")
-	const formatDocumentCount = (count: number | undefined): string => {
-		if (count === undefined || count === 0) return "0 docs";
-		if (count < 1000) return `${count} docs`;
+	// Format count number (e.g., "1.2k", "500", "1.5M")
+	const formatCount = (count: number | undefined): string => {
+		if (count === undefined || count === 0) return "0";
+		if (count < 1000) return `${count}`;
 		if (count < 1000000) {
 			const k = (count / 1000).toFixed(1);
-			return `${k.replace(/\.0$/, "")}k docs`;
+			return `${k.replace(/\.0$/, "")}k`;
 		}
 		const m = (count / 1000000).toFixed(1);
-		return `${m.replace(/\.0$/, "")}M docs`;
+		return `${m.replace(/\.0$/, "")}M`;
 	};
 
 	// Document types that should be shown as standalone cards (not from connectors)
@@ -142,7 +145,9 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 					{hasActiveConnectors && (
 						<div className="space-y-4">
 							<div className="flex items-center gap-2">
-								<h3 className="text-sm font-semibold text-muted-foreground">Active Connectors</h3>
+								<h3 className="text-sm font-semibold text-muted-foreground">
+									{t("section_active")}
+								</h3>
 							</div>
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 								{/* OAuth Connectors - Grouped by Type */}
@@ -190,15 +195,13 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 												{isAnyIndexing ? (
 													<p className="text-[11px] text-primary mt-1 flex items-center gap-1.5">
 														<Spinner size="xs" />
-														Syncing
+														{t("syncing")}
 													</p>
 												) : (
 													<p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1.5">
-														<span>{formatDocumentCount(documentCount)}</span>
+														<span>{t("docs_count", { count: formatCount(documentCount) })}</span>
 														<span className="text-muted-foreground/50">•</span>
-														<span>
-															{accountCount} {accountCount === 1 ? "Account" : "Accounts"}
-														</span>
+														<span>{t("account_count", { count: accountCount })}</span>
 													</p>
 												)}
 											</div>
@@ -208,7 +211,7 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 												className="h-8 text-[11px] px-3 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border-0 shadow-xs dark:bg-secondary dark:text-secondary-foreground dark:hover:bg-secondary/80 shrink-0"
 												onClick={handleManageClick}
 											>
-												Manage
+												{t("manage")}
 											</Button>
 										</div>
 									);
@@ -251,11 +254,11 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 												{isIndexing ? (
 													<p className="text-[11px] text-primary mt-1 flex items-center gap-1.5">
 														<Spinner size="xs" />
-														Syncing
+														{t("syncing")}
 													</p>
 												) : !isMCPConnector ? (
 													<p className="text-[10px] text-muted-foreground mt-1">
-														{formatDocumentCount(documentCount)}
+														{t("docs_count", { count: formatCount(documentCount) })}
 													</p>
 												) : null}
 											</div>
@@ -265,7 +268,7 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 												className="h-8 text-[11px] px-3 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border-0 shadow-xs dark:bg-secondary dark:text-secondary-foreground dark:hover:bg-secondary/80 shrink-0"
 												onClick={onManage ? () => onManage(connector) : undefined}
 											>
-												Manage
+												{t("manage")}
 											</Button>
 										</div>
 									);
@@ -278,7 +281,9 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 					{standaloneDocuments.length > 0 && (
 						<div className="space-y-4">
 							<div className="flex items-center justify-between">
-								<h3 className="text-sm font-semibold text-muted-foreground">Documents</h3>
+								<h3 className="text-sm font-semibold text-muted-foreground">
+									{t("section_documents")}
+								</h3>
 							</div>
 							<div className="flex flex-wrap items-center gap-2">
 								{standaloneDocuments.map((doc) => (
@@ -291,7 +296,7 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 										</div>
 										<span className="text-[12px] font-medium">{doc.label}</span>
 										<span className="text-[11px] text-muted-foreground">
-											{formatDocumentCount(doc.count)}
+											{t("docs_count", { count: formatCount(doc.count) })}
 										</span>
 									</div>
 								))}
@@ -304,9 +309,9 @@ export const ActiveConnectorsTab: FC<ActiveConnectorsTabProps> = ({
 					<div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
 						<Cable className="size-8 text-muted-foreground" />
 					</div>
-					<h4 className="text-lg font-semibold">No active sources</h4>
+					<h4 className="text-lg font-semibold">{t("no_active_sources")}</h4>
 					<p className="text-sm text-muted-foreground mt-1 max-w-[280px]">
-						Connect your first service to start searching across all your data.
+						{t("no_active_sources_desc")}
 					</p>
 				</div>
 			)}

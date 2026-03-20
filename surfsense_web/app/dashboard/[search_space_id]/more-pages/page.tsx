@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink, Gift, Mail, Star, Zap } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export default function MorePagesPage() {
+	const t = useTranslations("incentive");
 	const queryClient = useQueryClient();
 
 	useEffect(() => {
@@ -64,7 +66,7 @@ export default function MorePagesPage() {
 			}
 		},
 		onError: () => {
-			toast.error("Failed to complete task. Please try again.");
+			toast.error(t("task_failed"));
 		},
 	});
 
@@ -86,10 +88,8 @@ export default function MorePagesPage() {
 				{/* Header */}
 				<div className="text-center">
 					<Gift className="mx-auto mb-3 h-8 w-8 text-primary" />
-					<h2 className="text-xl font-bold tracking-tight">Get More Pages</h2>
-					<p className="mt-1 text-sm text-muted-foreground">
-						Complete tasks to earn additional pages
-					</p>
+					<h2 className="text-xl font-bold tracking-tight">{t("title")}</h2>
+					<p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
 				</div>
 
 				{/* Tasks */}
@@ -129,7 +129,9 @@ export default function MorePagesPage() {
 										>
 											{task.title}
 										</p>
-										<p className="text-xs text-muted-foreground">+{task.pages_reward} pages</p>
+										<p className="text-xs text-muted-foreground">
+											{t("pages_reward", { count: task.pages_reward })}
+										</p>
 									</div>
 									<Button
 										variant={task.completed ? "ghost" : "outline"}
@@ -139,7 +141,7 @@ export default function MorePagesPage() {
 										asChild={!task.completed}
 									>
 										{task.completed ? (
-											<span>Done</span>
+											<span>{t("done")}</span>
 										) : (
 											<a
 												href={task.action_url}
@@ -151,7 +153,7 @@ export default function MorePagesPage() {
 													<Spinner size="xs" />
 												) : (
 													<>
-														Go
+														{t("go")}
 														<ExternalLink className="h-3 w-3" />
 													</>
 												)}
@@ -171,29 +173,25 @@ export default function MorePagesPage() {
 					<CardHeader className="pb-2">
 						<div className="flex items-center gap-2">
 							<Zap className="h-4 w-4 text-emerald-500" />
-							<CardTitle className="text-base">Upgrade to PRO</CardTitle>
+							<CardTitle className="text-base">{t("upgrade_title")}</CardTitle>
 							<Badge className="bg-emerald-600 text-white border-transparent hover:bg-emerald-600">
-								FREE
+								{t("free_badge")}
 							</Badge>
 						</div>
-						<CardDescription>
-							For a limited time, get{" "}
-							<span className="font-semibold text-foreground">6,000 additional pages</span> at no
-							cost. Contact us and we&apos;ll upgrade your account instantly.
-						</CardDescription>
+						<CardDescription>{t("upgrade_desc")}</CardDescription>
 					</CardHeader>
 					<CardFooter className="pt-2">
 						<Dialog onOpenChange={(open) => open && trackIncentiveContactOpened()}>
 							<DialogTrigger asChild>
 								<Button className="w-full bg-emerald-600 text-white hover:bg-emerald-700">
 									<Mail className="h-4 w-4" />
-									Contact Us to Upgrade
+									{t("contact_upgrade")}
 								</Button>
 							</DialogTrigger>
 							<DialogContent className="select-none sm:max-w-sm">
 								<DialogHeader>
-									<DialogTitle>Get in Touch</DialogTitle>
-									<DialogDescription>Pick the option that works best for you.</DialogDescription>
+									<DialogTitle>{t("get_in_touch")}</DialogTitle>
+									<DialogDescription>{t("pick_option")}</DialogDescription>
 								</DialogHeader>
 								<div className="flex flex-col gap-2">
 									<Button asChild>
@@ -203,7 +201,7 @@ export default function MorePagesPage() {
 											rel="noopener noreferrer"
 										>
 											<IconCalendar className="h-4 w-4" />
-											Schedule a Meeting
+											{t("schedule_meeting")}
 										</Link>
 									</Button>
 									<Button variant="outline" asChild>

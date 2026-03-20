@@ -83,7 +83,7 @@ export function DocumentsFilters({
 								<div className="relative">
 									<Search className="absolute left-0.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 									<Input
-										placeholder="Search types"
+										placeholder={t("search_types")}
 										value={typeSearchQuery}
 										onChange={(e) => setTypeSearchQuery(e.target.value)}
 										className="h-6 pl-6 text-sm bg-transparent border-0 shadow-none focus-visible:ring-0"
@@ -101,7 +101,7 @@ export function DocumentsFilters({
 							>
 								{filteredTypes.length === 0 ? (
 									<div className="py-6 text-center text-sm text-muted-foreground">
-										No types found
+										{t("no_types_found")}
 									</div>
 								) : (
 									filteredTypes.map((value: DocumentTypeEnum, i) => (
@@ -151,12 +151,12 @@ export function DocumentsFilters({
 										size="sm"
 										className="w-full h-7 text-[11px] text-muted-foreground hover:text-foreground hover:bg-neutral-200 dark:hover:bg-neutral-700"
 										onClick={() => {
-											activeTypes.forEach((t) => {
-												onToggleType(t, false);
+											activeTypes.forEach((type) => {
+												onToggleType(type, false);
 											});
 										}}
 									>
-										Clear filters
+										{t("clear_filters")}
 									</Button>
 								</div>
 							)}
@@ -175,7 +175,7 @@ export function DocumentsFilters({
 						className="peer h-9 w-full pl-9 pr-9 text-sm bg-sidebar border-border/60 focus-visible:ring-1 focus-visible:ring-ring/30 select-none focus:select-text"
 						value={searchValue}
 						onChange={(e) => onSearch(e.target.value)}
-						placeholder="Search docs"
+						placeholder={t("search_docs")}
 						type="text"
 						aria-label={t("filter_placeholder")}
 					/>
@@ -202,7 +202,7 @@ export function DocumentsFilters({
 					className="h-9 shrink-0 gap-1.5 bg-white text-gray-700 border-white hover:bg-gray-50 dark:bg-white dark:text-gray-800 dark:hover:bg-gray-100"
 				>
 					<Upload size={14} />
-					<span>Upload</span>
+					<span>{t("upload")}</span>
 				</Button>
 			</div>
 		</div>

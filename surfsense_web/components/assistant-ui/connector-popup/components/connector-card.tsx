@@ -2,6 +2,7 @@
 
 import { IconBrandYoutube } from "@tabler/icons-react";
 import { FileText } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -27,17 +28,17 @@ interface ConnectorCardProps {
 }
 
 /**
- * Format document count (e.g., "1.2k docs", "500 docs", "1.5M docs")
+ * Format count number (e.g., "1.2k", "500", "1.5M")
  */
-function formatDocumentCount(count: number | undefined): string {
-	if (count === undefined || count === 0) return "0 docs";
-	if (count < 1000) return `${count} docs`;
+function formatCount(count: number | undefined): string {
+	if (count === undefined || count === 0) return "0";
+	if (count < 1000) return `${count}`;
 	if (count < 1000000) {
 		const k = (count / 1000).toFixed(1);
-		return `${k.replace(/\.0$/, "")}k docs`;
+		return `${k.replace(/\.0$/, "")}k`;
 	}
 	const m = (count / 1000000).toFixed(1);
-	return `${m.replace(/\.0$/, "")}M docs`;
+	return `${m.replace(/\.0$/, "")}M`;
 }
 
 export const ConnectorCard: FC<ConnectorCardProps> = ({
@@ -54,6 +55,7 @@ export const ConnectorCard: FC<ConnectorCardProps> = ({
 	onConnect,
 	onManage,
 }) => {
+	const t = useTranslations("connectorPopup");
 	const isMCP = connectorType === EnumConnectorName.MCP_CONNECTOR;
 	// Get connector status
 	const { getConnectorStatus, isConnectorEnabled, getConnectorStatusMessage, shouldShowWarnings } =
@@ -113,23 +115,19 @@ export const ConnectorCard: FC<ConnectorCardProps> = ({
 				{isIndexing ? (
 					<p className="text-[11px] text-primary mt-1 flex items-center gap-1.5">
 						<Spinner size="xs" />
-						Syncing
+						{t("syncing")}
 					</p>
 				) : isConnected ? (
 					<p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1.5">
 						{isMCP && connectorCount !== undefined ? (
-							<span>
-								{connectorCount} {connectorCount === 1 ? "server" : "servers"}
-							</span>
+							<span>{t("server_count", { count: connectorCount })}</span>
 						) : (
 							<>
-								<span>{formatDocumentCount(documentCount)}</span>
+								<span>{t("docs_count", { count: formatCount(documentCount) })}</span>
 								{accountCount !== undefined && accountCount > 0 && (
 									<>
 										<span className="text-muted-foreground/50">•</span>
-										<span>
-											{accountCount} {accountCount === 1 ? "Account" : "Accounts"}
-										</span>
+										<span>{t("account_count", { count: accountCount })}</span>
 									</>
 								)}
 							</>
@@ -154,15 +152,15 @@ export const ConnectorCard: FC<ConnectorCardProps> = ({
 				{isConnecting ? (
 					<Spinner size="xs" />
 				) : !isEnabled ? (
-					"Unavailable"
+					t("unavailable")
 				) : isConnected ? (
-					"Manage"
+					t("manage")
 				) : id === "youtube-crawler" ? (
-					"Add"
+					t("add")
 				) : connectorType ? (
-					"Connect"
+					t("connect")
 				) : (
-					"Add"
+					t("add")
 				)}
 			</Button>
 		</div>

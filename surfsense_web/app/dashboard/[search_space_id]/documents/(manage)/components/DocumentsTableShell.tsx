@@ -68,6 +68,7 @@ const EDITABLE_DOCUMENT_TYPES = ["FILE", "NOTE"] as const;
 const NON_DELETABLE_DOCUMENT_TYPES = ["SURFSENSE_DOCS"] as const;
 
 function StatusIndicator({ status }: { status?: DocumentStatus }) {
+	const t = useTranslations("documents");
 	const state = status?.state ?? "ready";
 
 	switch (state) {
@@ -79,7 +80,7 @@ function StatusIndicator({ status }: { status?: DocumentStatus }) {
 							<Clock className="h-5 w-5 text-muted-foreground/60" />
 						</div>
 					</TooltipTrigger>
-					<TooltipContent side="top">Pending - waiting to be synced</TooltipContent>
+					<TooltipContent side="top">{t("status_pending")}</TooltipContent>
 				</Tooltip>
 			);
 		case "processing":
@@ -90,7 +91,7 @@ function StatusIndicator({ status }: { status?: DocumentStatus }) {
 							<Spinner size="sm" className="text-primary" />
 						</div>
 					</TooltipTrigger>
-					<TooltipContent side="top">Syncing</TooltipContent>
+					<TooltipContent side="top">{t("status_syncing")}</TooltipContent>
 				</Tooltip>
 			);
 		case "failed":
@@ -102,7 +103,7 @@ function StatusIndicator({ status }: { status?: DocumentStatus }) {
 						</div>
 					</TooltipTrigger>
 					<TooltipContent side="top" className="max-w-xs">
-						{status?.reason || "Processing failed"}
+						{status?.reason || t("status_failed")}
 					</TooltipContent>
 				</Tooltip>
 			);
@@ -114,7 +115,7 @@ function StatusIndicator({ status }: { status?: DocumentStatus }) {
 							<CheckCircle2 className="h-5 w-5 text-muted-foreground/60" />
 						</div>
 					</TooltipTrigger>
-					<TooltipContent side="top">Ready</TooltipContent>
+					<TooltipContent side="top">{t("status_ready")}</TooltipContent>
 				</Tooltip>
 			);
 	}
@@ -146,6 +147,7 @@ function formatAbsoluteDate(dateStr: string): string {
 }
 
 function DocumentNameTooltip({ doc, className }: { doc: Document; className?: string }) {
+	const t = useTranslations("documents");
 	const textRef = useRef<HTMLSpanElement>(null);
 	const [isTruncated, setIsTruncated] = useState(false);
 
@@ -171,11 +173,11 @@ function DocumentNameTooltip({ doc, className }: { doc: Document; className?: st
 				<div className="space-y-1 text-xs">
 					{isTruncated && <p className="font-medium text-sm break-words">{doc.title}</p>}
 					<p>
-						<span className="text-muted-foreground">Owner:</span>{" "}
+						<span className="text-muted-foreground">{t("owner_label")}</span>{" "}
 						{doc.created_by_name || doc.created_by_email || "—"}
 					</p>
 					<p>
-						<span className="text-muted-foreground">Created:</span>{" "}
+						<span className="text-muted-foreground">{t("created_label")}</span>{" "}
 						{formatAbsoluteDate(doc.created_at)}
 					</p>
 				</div>
@@ -232,6 +234,7 @@ function RowContextMenu({
 	searchSpaceId: string;
 	onEditNavigate?: () => void;
 }) {
+	const t = useTranslations("documents");
 	const router = useRouter();
 
 	const isEditable = EDITABLE_DOCUMENT_TYPES.includes(
@@ -251,7 +254,7 @@ function RowContextMenu({
 			<ContextMenuContent className="w-48">
 				<ContextMenuItem onClick={() => onPreview(doc)}>
 					<Eye className="h-4 w-4" />
-					Preview
+					{t("preview")}
 				</ContextMenuItem>
 				{isEditable && (
 					<ContextMenuItem
@@ -449,22 +452,22 @@ export function DocumentsTableShell({
 		setIsDeleting(true);
 		try {
 			const ok = await deleteDocument(deleteDoc.id);
-			if (!ok) toast.error("Failed to delete document");
+			if (!ok) toast.error(t("delete_failed"));
 		} catch (error: unknown) {
 			console.error("Error deleting document:", error);
 			const status =
 				(error as { response?: { status?: number } })?.response?.status ??
 				(error as { status?: number })?.status;
 			if (status === 409) {
-				toast.error("Document is now being processed. Please try again later.");
+				toast.error(t("delete_conflict"));
 			} else {
-				toast.error("Failed to delete document");
+				toast.error(t("delete_failed"));
 			}
 		} finally {
 			setIsDeleting(false);
 			setDeleteDoc(null);
 		}
-	}, [deleteDoc, deleteDocument]);
+	}, [deleteDoc, deleteDocument, t]);
 
 	const sorted = React.useMemo(
 		() => sortDocuments(documents, sortKey, sortDesc),
@@ -526,10 +529,10 @@ export function DocumentsTableShell({
 			if (bulkDeleteDocuments) {
 				const { success, failed } = await bulkDeleteDocuments(deletableSelectedIds);
 				if (success > 0) {
-					toast.success(`Deleted ${success} document${success !== 1 ? "s" : ""}`);
+					toast.success(t("deleted_count", { count: success }));
 				}
 				if (failed > 0) {
-					toast.error(`Failed to delete ${failed} document${failed !== 1 ? "s" : ""}`);
+					toast.error(t("delete_count_failed", { count: failed }));
 				}
 			} else {
 				const results = await Promise.allSettled(
@@ -540,18 +543,18 @@ export function DocumentsTableShell({
 				).length;
 				const failCount = deletableSelectedIds.length - successCount;
 				if (successCount > 0) {
-					toast.success(`Deleted ${successCount} document${successCount !== 1 ? "s" : ""}`);
+					toast.success(t("deleted_count", { count: successCount }));
 				}
 				if (failCount > 0) {
-					toast.error(`Failed to delete ${failCount} document${failCount !== 1 ? "s" : ""}`);
+					toast.error(t("delete_count_failed", { count: failCount }));
 				}
 			}
 		} catch {
-			toast.error("Failed to delete documents");
+			toast.error(t("delete_failed"));
 		}
 		setIsBulkDeleting(false);
 		setBulkDeleteConfirmOpen(false);
-	}, [deletableSelectedIds, bulkDeleteDocuments, deleteDocument]);
+	}, [deletableSelectedIds, bulkDeleteDocuments, deleteDocument, t]);
 
 	return (
 		<div className="bg-sidebar overflow-hidden select-none border-t border-border/50 flex-1 flex flex-col min-h-0">
@@ -565,7 +568,7 @@ export function DocumentsTableShell({
 									<Checkbox
 										checked={allMentionedOnPage || (someMentionedOnPage && "indeterminate")}
 										onCheckedChange={(v) => toggleAll(!!v)}
-										aria-label={hasChatMode ? "Toggle all for chat" : "Select all"}
+										aria-label={hasChatMode ? t("toggle_all_chat") : t("select_all")}
 										className="border-foreground data-[state=checked]:bg-primary data-[state=checked]:border-primary"
 									/>
 								</div>
@@ -578,7 +581,7 @@ export function DocumentsTableShell({
 									onSort={onSortHeader}
 									icon={<FileText size={14} className="text-muted-foreground" />}
 								>
-									Document
+									{t("document_header")}
 								</SortableHeader>
 							</TableHead>
 							<TableHead className="w-10 text-center h-8 px-0">
@@ -598,7 +601,9 @@ export function DocumentsTableShell({
 												<Trash2 size={14} />
 											</button>
 										</TooltipTrigger>
-										<TooltipContent>Delete {deletableSelectedIds.length} selected</TooltipContent>
+										<TooltipContent>
+											{t("delete_selected_tooltip", { count: deletableSelectedIds.length })}
+										</TooltipContent>
 									</Tooltip>
 								) : (
 									<span className="text-xs font-medium text-muted-foreground">Status</span>
@@ -648,12 +653,8 @@ export function DocumentsTableShell({
 							<div className="flex flex-col items-center gap-3 max-w-md px-4 text-center">
 								<SearchX className="h-8 w-8 text-muted-foreground" />
 								<div className="space-y-1">
-									<h3 className="text-sm font-medium text-muted-foreground">
-										No matching documents
-									</h3>
-									<p className="text-xs text-muted-foreground/70">
-										Try a different search term or adjust your filters.
-									</p>
+									<h3 className="text-sm font-medium text-muted-foreground">{t("no_matching")}</h3>
+									<p className="text-xs text-muted-foreground/70">{t("no_matching_desc")}</p>
 								</div>
 							</div>
 						) : (
@@ -663,12 +664,10 @@ export function DocumentsTableShell({
 								</div>
 								<div className="space-y-1.5">
 									<h3 className="text-lg font-semibold">{t("no_documents")}</h3>
-									<p className="text-sm text-muted-foreground">
-										Get started by uploading your first document.
-									</p>
+									<p className="text-sm text-muted-foreground">{t("get_started_desc")}</p>
 								</div>
 								<Button onClick={openDialog} className="mt-2">
-									Upload Documents
+									{t("upload_documents")}
 								</Button>
 							</div>
 						)}
@@ -718,7 +717,7 @@ export function DocumentsTableShell({
 															checked={isMentioned}
 															onCheckedChange={() => handleRowToggle()}
 															disabled={!canInteract}
-															aria-label={isMentioned ? "Remove from chat" : "Add to chat"}
+															aria-label={isMentioned ? t("remove_from_chat") : t("add_to_chat")}
 															className={`border-foreground data-[state=checked]:bg-primary data-[state=checked]:border-primary ${!canInteract ? "opacity-40 cursor-not-allowed" : ""}`}
 														/>
 													</div>
@@ -786,10 +785,8 @@ export function DocumentsTableShell({
 						<div className="flex flex-col items-center gap-3 max-w-md px-4 text-center">
 							<SearchX className="h-8 w-8 text-muted-foreground" />
 							<div className="space-y-1">
-								<h3 className="text-sm font-medium text-muted-foreground">No matching documents</h3>
-								<p className="text-xs text-muted-foreground/70">
-									Try a different search term or adjust your filters.
-								</p>
+								<h3 className="text-sm font-medium text-muted-foreground">{t("no_matching")}</h3>
+								<p className="text-xs text-muted-foreground/70">{t("no_matching_desc")}</p>
 							</div>
 						</div>
 					) : (
@@ -799,12 +796,10 @@ export function DocumentsTableShell({
 							</div>
 							<div className="space-y-1.5">
 								<h3 className="text-lg font-semibold">{t("no_documents")}</h3>
-								<p className="text-sm text-muted-foreground">
-									Get started by uploading your first document.
-								</p>
+								<p className="text-sm text-muted-foreground">{t("get_started_desc")}</p>
 							</div>
 							<Button onClick={openDialog} className="mt-2">
-								Upload Documents
+								{t("upload_documents")}
 							</Button>
 						</div>
 					)}
@@ -817,7 +812,7 @@ export function DocumentsTableShell({
 					{hasDeletableSelection && (
 						<div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b border-border/50 sticky top-0 z-10">
 							<span className="text-xs text-muted-foreground">
-								{deletableSelectedIds.length} deletable selected
+								{t("deletable_selected", { count: deletableSelectedIds.length })}
 							</span>
 							<Button
 								variant="destructive"
@@ -867,7 +862,7 @@ export function DocumentsTableShell({
 												checked={isMentioned}
 												onCheckedChange={() => handleCardClick()}
 												disabled={!canInteract}
-												aria-label={isMentioned ? "Remove from chat" : "Add to chat"}
+												aria-label={isMentioned ? t("remove_from_chat") : t("add_to_chat")}
 												className={`border-foreground data-[state=checked]:bg-primary data-[state=checked]:border-primary shrink-0 ${!canInteract ? "opacity-40 cursor-not-allowed" : ""}`}
 											/>
 										</span>
@@ -944,11 +939,8 @@ export function DocumentsTableShell({
 			<AlertDialog open={!!deleteDoc} onOpenChange={(open) => !open && setDeleteDoc(null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete document?</AlertDialogTitle>
-						<AlertDialogDescription>
-							This action cannot be undone. This will permanently delete this document from your
-							search space.
-						</AlertDialogDescription>
+						<AlertDialogTitle>{t("delete_document_title")}</AlertDialogTitle>
+						<AlertDialogDescription>{t("delete_document_desc")}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -974,11 +966,11 @@ export function DocumentsTableShell({
 						<DrawerTitle className="break-words text-base">{mobileActionDoc?.title}</DrawerTitle>
 						<div className="space-y-0.5 text-xs mt-1">
 							<p>
-								<span className="text-muted-foreground">Owner:</span>{" "}
+								<span className="text-muted-foreground">{t("owner_label")}</span>{" "}
 								{mobileActionDoc?.created_by_name || mobileActionDoc?.created_by_email || "—"}
 							</p>
 							<p>
-								<span className="text-muted-foreground">Created:</span>{" "}
+								<span className="text-muted-foreground">{t("created_label")}</span>{" "}
 								{mobileActionDoc ? formatAbsoluteDate(mobileActionDoc.created_at) : ""}
 							</p>
 						</div>
@@ -993,7 +985,7 @@ export function DocumentsTableShell({
 							}}
 						>
 							<Eye className="h-4 w-4" />
-							Preview
+							{t("preview")}
 						</Button>
 						{mobileActionDoc &&
 							EDITABLE_DOCUMENT_TYPES.includes(
@@ -1054,15 +1046,10 @@ export function DocumentsTableShell({
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							Delete {deletableSelectedIds.length} document
-							{deletableSelectedIds.length !== 1 ? "s" : ""}?
+							{t("delete_count_title", { count: deletableSelectedIds.length })}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							This action cannot be undone.{" "}
-							{deletableSelectedIds.length === 1
-								? "This document"
-								: `These ${deletableSelectedIds.length} documents`}{" "}
-							will be permanently deleted from your search space.
+							{t("delete_count_desc", { count: deletableSelectedIds.length })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

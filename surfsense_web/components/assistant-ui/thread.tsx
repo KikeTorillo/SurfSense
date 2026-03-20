@@ -26,6 +26,7 @@ import {
 	X,
 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type FC, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -83,16 +84,6 @@ import { useCommentsElectric } from "@/hooks/use-comments-electric";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
-/** Placeholder texts that cycle in new chats when input is empty */
-const CYCLING_PLACEHOLDERS = [
-	"Ask SurfSense anything or @mention docs.",
-	"Generate a podcast from my vacation ideas in Notion.",
-	"Sum up last week's meeting notes from Drive in a bulleted list.",
-	"Give me a brief overview of the most urgent tickets in Jira and Linear.",
-	"Briefly, what are today's top ten important emails and calendar events?",
-	"Check if this week's Slack messages reference any GitHub issues.",
-];
-
 interface ThreadProps {
 	messageThinkingSteps?: Map<string, ThinkingStep[]>;
 }
@@ -146,10 +137,11 @@ const ThreadContent: FC = () => {
 };
 
 const ThreadScrollToBottom: FC = () => {
+	const t = useTranslations("chat");
 	return (
 		<ThreadPrimitive.ScrollToBottom asChild>
 			<TooltipIconButton
-				tooltip="Scroll to bottom"
+				tooltip={t("scroll_to_bottom")}
 				variant="outline"
 				className="aui-thread-scroll-to-bottom -top-12 absolute z-10 self-center rounded-full p-4 disabled:invisible dark:bg-background dark:hover:bg-accent"
 			>
@@ -159,7 +151,10 @@ const ThreadScrollToBottom: FC = () => {
 	);
 };
 
-const getTimeBasedGreeting = (user?: { display_name?: string | null; email?: string }): string => {
+const getTimeBasedGreeting = (
+	t: (key: string, values?: Record<string, string>) => string,
+	user?: { display_name?: string | null; email?: string }
+): string => {
 	const hour = new Date().getHours();
 
 	// Extract first name: prefer display_name, fall back to email extraction
@@ -178,15 +173,36 @@ const getTimeBasedGreeting = (user?: { display_name?: string | null; email?: str
 	}
 
 	// Array of greeting variations for each time period
-	const morningGreetings = ["Good morning", "Fresh start today", "Morning", "Hey there"];
-
-	const afternoonGreetings = ["Good afternoon", "Afternoon", "Hey there", "Hi there"];
-
-	const eveningGreetings = ["Good evening", "Evening", "Hey there", "Hi there"];
-
-	const nightGreetings = ["Good night", "Evening", "Hey there", "Winding down"];
-
-	const lateNightGreetings = ["Still up", "Night owl mode", "Up past bedtime", "Hi there"];
+	const morningGreetings = [
+		t("greeting_morning_0"),
+		t("greeting_morning_1"),
+		t("greeting_morning_2"),
+		t("greeting_morning_3"),
+	];
+	const afternoonGreetings = [
+		t("greeting_afternoon_0"),
+		t("greeting_afternoon_1"),
+		t("greeting_afternoon_2"),
+		t("greeting_afternoon_3"),
+	];
+	const eveningGreetings = [
+		t("greeting_evening_0"),
+		t("greeting_evening_1"),
+		t("greeting_evening_2"),
+		t("greeting_evening_3"),
+	];
+	const nightGreetings = [
+		t("greeting_night_0"),
+		t("greeting_night_1"),
+		t("greeting_night_2"),
+		t("greeting_night_3"),
+	];
+	const lateNightGreetings = [
+		t("greeting_latenight_0"),
+		t("greeting_latenight_1"),
+		t("greeting_latenight_2"),
+		t("greeting_latenight_3"),
+	];
 
 	// Select a random greeting based on time
 	let greeting: string;
@@ -206,17 +222,18 @@ const getTimeBasedGreeting = (user?: { display_name?: string | null; email?: str
 
 	// Add personalization with first name if available
 	if (firstName) {
-		return `${greeting}, ${firstName}!`;
+		return `${greeting}${t("greeting_suffix", { name: firstName })}`;
 	}
 
-	return `${greeting}!`;
+	return `${greeting}${t("greeting_suffix_anon")}`;
 };
 
 const ThreadWelcome: FC = () => {
+	const t = useTranslations("chat");
 	const { data: user } = useAtomValue(currentUserAtom);
 
 	// Memoize greeting so it doesn't change on re-renders (only on user change)
-	const greeting = useMemo(() => getTimeBasedGreeting(user), [user]);
+	const greeting = useMemo(() => getTimeBasedGreeting(t, user), [t, user]);
 
 	return (
 		<div className="aui-thread-welcome-root mx-auto flex w-full max-w-(--thread-max-width) grow flex-col items-center px-4 relative">
@@ -243,6 +260,7 @@ const BANNER_CONNECTORS = [
 const BANNER_DISMISSED_KEY = "surfsense-connect-tools-banner-dismissed";
 
 const ConnectToolsBanner: FC = () => {
+	const t = useTranslations("chat");
 	const { data: connectors } = useAtomValue(connectorsAtom);
 	const setConnectorDialogOpen = useSetAtom(connectorDialogOpenAtom);
 	const [dismissed, setDismissed] = useState(() => {
@@ -268,7 +286,9 @@ const ConnectToolsBanner: FC = () => {
 				onClick={() => setConnectorDialogOpen(true)}
 			>
 				<Unplug className="size-4 text-muted-foreground/70 shrink-0" />
-				<span className="text-[13px] text-muted-foreground/80 flex-1">Connect your tools</span>
+				<span className="text-[13px] text-muted-foreground/80 flex-1">
+					{t("connect_your_tools")}
+				</span>
 				<AvatarGroup className="shrink-0">
 					{BANNER_CONNECTORS.map(({ type, label }, i) => (
 						<Avatar key={type} className="size-6" style={{ zIndex: BANNER_CONNECTORS.length - i }}>
@@ -289,7 +309,7 @@ const ConnectToolsBanner: FC = () => {
 						}
 					}}
 					className="shrink-0 ml-0.5 p-0.5 text-muted-foreground/40 hover:text-foreground transition-colors"
-					aria-label="Dismiss"
+					aria-label={t("dismiss")}
 				>
 					<X className="size-3.5" />
 				</span>
@@ -299,6 +319,7 @@ const ConnectToolsBanner: FC = () => {
 };
 
 const Composer: FC = () => {
+	const t = useTranslations("chat");
 	// Document mention state (atoms persist across component remounts)
 	const [mentionedDocuments, setMentionedDocuments] = useAtom(mentionedDocumentsAtom);
 	const setSidebarDocs = useSetAtom(sidebarSelectedDocumentsAtom);
@@ -316,6 +337,17 @@ const Composer: FC = () => {
 
 	// Cycling placeholder state - only cycles in new chats
 	const [placeholderIndex, setPlaceholderIndex] = useState(0);
+	const cyclingPlaceholders = useMemo(
+		() => [
+			t("placeholder_0"),
+			t("placeholder_1"),
+			t("placeholder_2"),
+			t("placeholder_3"),
+			t("placeholder_4"),
+			t("placeholder_5"),
+		],
+		[t]
+	);
 
 	// Cycle through placeholders every 4 seconds when thread is empty (new chat)
 	useEffect(() => {
@@ -327,16 +359,16 @@ const Composer: FC = () => {
 		}
 
 		const intervalId = setInterval(() => {
-			setPlaceholderIndex((prev) => (prev + 1) % CYCLING_PLACEHOLDERS.length);
+			setPlaceholderIndex((prev) => (prev + 1) % cyclingPlaceholders.length);
 		}, 6000);
 
 		return () => clearInterval(intervalId);
-	}, [isThreadEmpty]);
+	}, [isThreadEmpty, cyclingPlaceholders.length]);
 
 	// Compute current placeholder - only cycle in new chats
 	const currentPlaceholder = isThreadEmpty
-		? CYCLING_PLACEHOLDERS[placeholderIndex]
-		: CYCLING_PLACEHOLDERS[0];
+		? cyclingPlaceholders[placeholderIndex]
+		: cyclingPlaceholders[0];
 
 	// Live collaboration state
 	const { data: currentUser } = useAtomValue(currentUserAtom);
@@ -558,6 +590,22 @@ interface ComposerActionProps {
 }
 
 const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false }) => {
+	const t = useTranslations("chat");
+	const toolLabels: Record<string, string> = useMemo(
+		() => ({
+			search_knowledge_base: t("tool_search_knowledge_base"),
+			generate_podcast: t("tool_generate_podcast"),
+			generate_report: t("tool_generate_report"),
+			link_preview: t("tool_link_preview"),
+			display_image: t("tool_display_image"),
+			generate_image: t("tool_generate_image"),
+			scrape_webpage: t("tool_scrape_webpage"),
+			search_surfsense_docs: t("tool_search_surfsense_docs"),
+			save_memory: t("tool_save_memory"),
+			recall_memory: t("tool_recall_memory"),
+		}),
+		[t]
+	);
 	const mentionedDocuments = useAtomValue(mentionedDocumentsAtom);
 	const sidebarDocs = useAtomValue(sidebarSelectedDocumentsAtom);
 	const setDocumentsSidebarOpen = useSetAtom(documentsSidebarOpenAtom);
@@ -610,12 +658,12 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 				<Popover open={toolsPopoverOpen} onOpenChange={setToolsPopoverOpen}>
 					<PopoverTrigger asChild>
 						<TooltipIconButton
-							tooltip="Manage tools"
+							tooltip={t("manage_tools")}
 							side="bottom"
 							variant="ghost"
 							size="icon"
 							className="size-[34px] rounded-full p-1 font-semibold text-xs hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30"
-							aria-label="Manage tools"
+							aria-label={t("manage_tools")}
 							data-joyride="connector-icon"
 						>
 							<Wrench className="size-4" />
@@ -629,9 +677,12 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 						onOpenAutoFocus={(e) => e.preventDefault()}
 					>
 						<div className="flex items-center justify-between px-2.5 py-2 sm:px-3 sm:py-2.5 border-b">
-							<span className="text-xs sm:text-sm font-medium">Agent Tools</span>
+							<span className="text-xs sm:text-sm font-medium">{t("agent_tools")}</span>
 							<span className="text-[10px] sm:text-xs text-muted-foreground">
-								{enabledCount}/{agentTools?.length ?? 0} enabled
+								{t("tools_enabled_count", {
+									enabled: String(enabledCount),
+									total: String(agentTools?.length ?? 0),
+								})}
 							</span>
 						</div>
 						<div
@@ -647,7 +698,7 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 								const row = (
 									<label className="flex items-center gap-2 sm:gap-3 px-2.5 sm:px-3 py-1 sm:py-1.5 cursor-pointer hover:bg-muted-foreground/10 transition-colors">
 										<span className="flex-1 min-w-0 text-xs sm:text-sm font-medium truncate">
-											{formatToolName(tool.name)}
+											{toolLabels[tool.name] ?? formatToolName(tool.name)}
 										</span>
 										<Switch
 											checked={!isDisabled}
@@ -670,7 +721,7 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 							})}
 							{!agentTools?.length && (
 								<div className="px-3 py-4 text-center text-xs text-muted-foreground">
-									Loading tools...
+									{t("loading_tools")}
 								</div>
 							)}
 						</div>
@@ -678,12 +729,12 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 				</Popover>
 				{!isDesktop && (
 					<TooltipIconButton
-						tooltip="Manage connectors"
+						tooltip={t("manage_connectors")}
 						side="bottom"
 						variant="ghost"
 						size="icon"
 						className="size-[34px] rounded-full p-1 font-semibold text-xs hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30"
-						aria-label="Manage connectors"
+						aria-label={t("manage_connectors")}
 						onClick={() => setConnectorDialogOpen(true)}
 					>
 						<Unplug className="size-4" />
@@ -695,7 +746,7 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 						onClick={() => setDocumentsSidebarOpen(true)}
 						className="rounded-full border border-border/60 bg-accent/50 px-2.5 py-1 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent"
 					>
-						{sidebarDocs.length} {sidebarDocs.length === 1 ? "source" : "sources"} selected
+						{t("sources_selected", { count: sidebarDocs.length })}
 					</button>
 				)}
 			</div>
@@ -703,7 +754,7 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 			{!hasModelConfigured && (
 				<div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-xs">
 					<AlertCircle className="size-3" />
-					<span>Select a model</span>
+					<span>{t("select_a_model")}</span>
 				</div>
 			)}
 
@@ -713,12 +764,12 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 						<TooltipIconButton
 							tooltip={
 								isBlockedByOtherUser
-									? "Wait for AI to finish responding"
+									? t("tooltip_wait_ai")
 									: !hasModelConfigured
-										? "Please select a model from the header to start chatting"
+										? t("tooltip_select_model")
 										: isComposerEmpty
-											? "Enter a message to send"
-											: "Send message"
+											? t("tooltip_enter_message")
+											: t("tooltip_send")
 							}
 							side="bottom"
 							type="submit"
@@ -728,7 +779,7 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 								"aui-composer-send size-8 rounded-full",
 								isSendDisabled && "cursor-not-allowed opacity-50"
 							)}
-							aria-label="Send message"
+							aria-label={t("tooltip_send")}
 							disabled={isSendDisabled}
 						>
 							<ArrowUpIcon className="aui-composer-send-icon size-4" />
@@ -743,7 +794,7 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 							variant="default"
 							size="icon"
 							className="aui-composer-cancel size-8 rounded-full"
-							aria-label="Stop generating"
+							aria-label={t("stop_generating")}
 						>
 							<SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
 						</Button>
@@ -822,6 +873,7 @@ const AssistantMessageInner: FC = () => {
 };
 
 const AssistantActionBar: FC = () => {
+	const t = useTranslations("chat");
 	return (
 		<ActionBarPrimitive.Root
 			hideWhenRunning
@@ -830,7 +882,7 @@ const AssistantActionBar: FC = () => {
 			className="aui-assistant-action-bar-root -ml-1 col-start-3 row-start-2 flex gap-1 text-muted-foreground data-floating:absolute data-floating:rounded-md data-floating:border data-floating:bg-background data-floating:p-1 data-floating:shadow-sm"
 		>
 			<ActionBarPrimitive.Copy asChild>
-				<TooltipIconButton tooltip="Copy">
+				<TooltipIconButton tooltip={t("action_copy")}>
 					<AssistantIf condition={({ message }) => message.isCopied}>
 						<CheckIcon />
 					</AssistantIf>
@@ -840,12 +892,12 @@ const AssistantActionBar: FC = () => {
 				</TooltipIconButton>
 			</ActionBarPrimitive.Copy>
 			<ActionBarPrimitive.ExportMarkdown asChild>
-				<TooltipIconButton tooltip="Export as Markdown">
+				<TooltipIconButton tooltip={t("action_export_markdown")}>
 					<DownloadIcon />
 				</TooltipIconButton>
 			</ActionBarPrimitive.ExportMarkdown>
 			<ActionBarPrimitive.Reload asChild>
-				<TooltipIconButton tooltip="Refresh">
+				<TooltipIconButton tooltip={t("action_refresh")}>
 					<RefreshCwIcon />
 				</TooltipIconButton>
 			</ActionBarPrimitive.Reload>
@@ -854,6 +906,7 @@ const AssistantActionBar: FC = () => {
 };
 
 const EditComposer: FC = () => {
+	const t = useTranslations("chat");
 	return (
 		<MessagePrimitive.Root className="aui-edit-composer-wrapper mx-auto flex w-full max-w-(--thread-max-width) flex-col px-2 py-3">
 			<ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col rounded-2xl bg-muted">
@@ -864,11 +917,11 @@ const EditComposer: FC = () => {
 				<div className="aui-edit-composer-footer mx-3 mb-3 flex items-center gap-2 self-end">
 					<ComposerPrimitive.Cancel asChild>
 						<Button variant="ghost" size="sm">
-							Cancel
+							{t("edit_cancel")}
 						</Button>
 					</ComposerPrimitive.Cancel>
 					<ComposerPrimitive.Send asChild>
-						<Button size="sm">Update</Button>
+						<Button size="sm">{t("edit_update")}</Button>
 					</ComposerPrimitive.Send>
 				</div>
 			</ComposerPrimitive.Root>
@@ -877,6 +930,7 @@ const EditComposer: FC = () => {
 };
 
 const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({ className, ...rest }) => {
+	const t = useTranslations("chat");
 	return (
 		<BranchPickerPrimitive.Root
 			hideWhenSingleBranch
@@ -887,7 +941,7 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({ className, ...rest
 			{...rest}
 		>
 			<BranchPickerPrimitive.Previous asChild>
-				<TooltipIconButton tooltip="Previous">
+				<TooltipIconButton tooltip={t("branch_previous")}>
 					<ChevronLeftIcon />
 				</TooltipIconButton>
 			</BranchPickerPrimitive.Previous>
@@ -895,7 +949,7 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({ className, ...rest
 				<BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
 			</span>
 			<BranchPickerPrimitive.Next asChild>
-				<TooltipIconButton tooltip="Next">
+				<TooltipIconButton tooltip={t("branch_next")}>
 					<ChevronRightIcon />
 				</TooltipIconButton>
 			</BranchPickerPrimitive.Next>

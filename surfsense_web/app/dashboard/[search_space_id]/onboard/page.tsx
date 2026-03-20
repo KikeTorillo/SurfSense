@@ -3,6 +3,7 @@
 import { useAtomValue } from "jotai";
 import { motion } from "motion/react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -20,6 +21,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { getBearerToken, redirectToLogin } from "@/lib/auth-utils";
 
 export default function OnboardPage() {
+	const t = useTranslations("onboard");
 	const router = useRouter();
 	const params = useParams();
 	const searchSpaceId = Number(params.search_space_id);
@@ -91,15 +93,15 @@ export default function OnboardPage() {
 						},
 					});
 
-					toast.success("AI configured automatically!", {
-						description: `Using ${firstGlobalConfig.name}. You can customize this later in Settings.`,
+					toast.success(t("auto_configured"), {
+						description: t("auto_configured_desc", { name: firstGlobalConfig.name }),
 					});
 
 					// Redirect to new-chat
 					router.push(`/dashboard/${searchSpaceId}/new-chat`);
 				} catch (error) {
 					console.error("Auto-configuration failed:", error);
-					toast.error("Auto-configuration failed. Please add a configuration manually.");
+					toast.error(t("auto_config_failed"));
 					setIsAutoConfiguring(false);
 				}
 			}
@@ -115,6 +117,7 @@ export default function OnboardPage() {
 		updatePreferences,
 		searchSpaceId,
 		router,
+		t,
 	]);
 
 	// Handle form submission
@@ -132,8 +135,8 @@ export default function OnboardPage() {
 				},
 			});
 
-			toast.success("Configuration created!", {
-				description: "Redirecting to chat...",
+			toast.success(t("config_created"), {
+				description: t("redirecting"),
 			});
 
 			// Redirect to new-chat
@@ -141,7 +144,7 @@ export default function OnboardPage() {
 		} catch (error) {
 			console.error("Failed to create config:", error);
 			if (error instanceof Error) {
-				toast.error(error.message || "Failed to create configuration");
+				toast.error(error.message || t("config_create_failed"));
 			}
 		}
 	};
@@ -165,12 +168,10 @@ export default function OnboardPage() {
 					</div>
 					<div className="space-y-2">
 						<h2 className="text-2xl font-bold tracking-tight">
-							{isAutoConfiguring ? "Setting up your AI..." : "Loading..."}
+							{isAutoConfiguring ? t("setting_up") : t("loading_text")}
 						</h2>
 						<p className="text-muted-foreground">
-							{isAutoConfiguring
-								? "Auto-configuring with available settings"
-								: "Please wait while we check your configuration"}
+							{isAutoConfiguring ? t("auto_configuring") : t("please_wait")}
 						</p>
 					</div>
 					<div className="flex justify-center gap-1">
@@ -215,10 +216,8 @@ export default function OnboardPage() {
 						</motion.div>
 
 						<div className="space-y-2">
-							<h1 className="text-3xl font-bold tracking-tight">Configure Your AI</h1>
-							<p className="text-muted-foreground text-lg">
-								Add your LLM provider to get started with SurfSense
-							</p>
+							<h1 className="text-3xl font-bold tracking-tight">{t("configure_title")}</h1>
+							<p className="text-muted-foreground text-lg">{t("configure_desc")}</p>
 						</div>
 					</div>
 
@@ -230,7 +229,7 @@ export default function OnboardPage() {
 					>
 						<Card className="border-2 border-muted shadow-xl overflow-hidden">
 							<CardHeader className="pb-4">
-								<CardTitle className="text-xl">LLM Configuration</CardTitle>
+								<CardTitle className="text-xl">{t("llm_configuration")}</CardTitle>
 							</CardHeader>
 							<CardContent>
 								<LLMConfigForm
@@ -239,7 +238,7 @@ export default function OnboardPage() {
 									isSubmitting={isSubmitting}
 									mode="create"
 									showAdvanced={true}
-									submitLabel="Start Using SurfSense"
+									submitLabel={t("start_using")}
 									initialData={{
 										citations_enabled: true,
 										use_default_system_instructions: true,
@@ -256,13 +255,13 @@ export default function OnboardPage() {
 						transition={{ delay: 0.5 }}
 						className="text-center text-sm text-muted-foreground"
 					>
-						You can add more configurations and customize settings anytime in{" "}
+						{t("can_customize_later")}{" "}
 						<button
 							type="button"
 							onClick={() => router.push(`/dashboard/${searchSpaceId}/settings?tab=general`)}
 							className="text-violet-500 hover:underline"
 						>
-							Settings
+							{t("settings_link")}
 						</button>
 					</motion.p>
 				</motion.div>

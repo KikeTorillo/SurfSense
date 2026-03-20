@@ -27,6 +27,7 @@ export function DashboardClientLayout({
 	searchSpaceId: string;
 }) {
 	const t = useTranslations("dashboard");
+	const tOnboard = useTranslations("onboard");
 	const router = useRouter();
 	const pathname = usePathname();
 	const { search_space_id } = useParams();
@@ -102,8 +103,8 @@ export function DashboardClientLayout({
 
 						await refetchPreferences();
 
-						toast.success("AI configured automatically!", {
-							description: `Using ${firstGlobalConfig.name}. Customize in Settings.`,
+						toast.success(tOnboard("auto_configured"), {
+							description: tOnboard("auto_configured_desc", { name: firstGlobalConfig.name }),
 						});
 
 						setHasCheckedOnboarding(true);
@@ -136,6 +137,7 @@ export function DashboardClientLayout({
 		hasCheckedOnboarding,
 		updatePreferences,
 		refetchPreferences,
+		tOnboard,
 	]);
 
 	useEffect(() => {

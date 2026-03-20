@@ -2,6 +2,7 @@
 
 import { MoreHorizontal, PenLine, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -38,6 +39,7 @@ export function RowActions({
 	deleteDocument: (id: number) => Promise<boolean>;
 	searchSpaceId: string;
 }) {
+	const t = useTranslations("documents");
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const router = useRouter();
@@ -66,7 +68,7 @@ export function RowActions({
 		setIsDeleting(true);
 		try {
 			const ok = await deleteDocument(document.id);
-			if (!ok) toast.error("Failed to delete document");
+			if (!ok) toast.error(t("delete_failed"));
 			// Note: Success toast is handled by the mutation atom's onSuccess callback
 			// Cache is updated optimistically by the mutation, no need to refresh
 		} catch (error: unknown) {
@@ -76,9 +78,9 @@ export function RowActions({
 				(error as { response?: { status?: number } })?.response?.status ??
 				(error as { status?: number })?.status;
 			if (status === 409) {
-				toast.error("Document is now being processed. Please try again later.");
+				toast.error(t("delete_conflict"));
 			} else {
-				toast.error("Failed to delete document");
+				toast.error(t("delete_failed"));
 			}
 		} finally {
 			setIsDeleting(false);
@@ -103,7 +105,7 @@ export function RowActions({
 								className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80"
 							>
 								<MoreHorizontal className="h-4 w-4" />
-								<span className="sr-only">Open menu</span>
+								<span className="sr-only">{t("open_menu")}</span>
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-40">
@@ -154,7 +156,7 @@ export function RowActions({
 						<DropdownMenuTrigger asChild>
 							<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
 								<MoreHorizontal className="h-4 w-4" />
-								<span className="sr-only">Open menu</span>
+								<span className="sr-only">{t("open_menu")}</span>
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-40">
@@ -201,11 +203,8 @@ export function RowActions({
 			<AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete document?</AlertDialogTitle>
-						<AlertDialogDescription>
-							This action cannot be undone. This will permanently delete this document from your
-							search space.
-						</AlertDialogDescription>
+						<AlertDialogTitle>{t("delete_document_title")}</AlertDialogTitle>
+						<AlertDialogDescription>{t("delete_document_desc")}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>

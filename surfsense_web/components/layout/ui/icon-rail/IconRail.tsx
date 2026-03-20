@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -27,6 +28,7 @@ export function IconRail({
 	onAddSearchSpace,
 	className,
 }: IconRailProps) {
+	const tSidebar = useTranslations("sidebar");
 	return (
 		<div className={cn("flex h-full w-14 flex-col items-center", className)}>
 			<ScrollArea className="w-full">
@@ -56,11 +58,11 @@ export function IconRail({
 								className="h-10 w-10 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
 							>
 								<Plus className="h-5 w-5 text-muted-foreground" />
-								<span className="sr-only">Add search space</span>
+								<span className="sr-only">{tSidebar("add_search_space")}</span>
 							</Button>
 						</TooltipTrigger>
 						<TooltipContent side="right" sideOffset={8}>
-							Add search space
+							{tSidebar("add_search_space")}
 						</TooltipContent>
 					</Tooltip>
 				</div>

@@ -9,6 +9,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useParams, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -164,6 +165,7 @@ const TOOLS_WITH_UI = new Set([
 export default function NewChatPage() {
 	const params = useParams();
 	const queryClient = useQueryClient();
+	const t = useTranslations("chat");
 	const [isInitializing, setIsInitializing] = useState(true);
 	const [threadId, setThreadId] = useState<number | null>(null);
 	const [currentThread, setCurrentThread] = useState<ThreadRecord | null>(null);
@@ -340,17 +342,17 @@ export default function NewChatPage() {
 			// that will cause 404 errors on subsequent API calls
 			setThreadId(null);
 			setCurrentThread(null);
-			toast.error("Failed to load chat. Please try again.");
+			toast.error(t("load_failed"));
 		} finally {
 			setIsInitializing(false);
 		}
 	}, [
 		urlChatId,
-		searchSpaceId,
 		setMessageDocumentsMap,
 		setMentionedDocuments,
 		setSidebarDocuments,
 		closeReportPanel,
+		t,
 	]);
 
 	// Initialize on mount
@@ -454,13 +456,13 @@ export default function NewChatPage() {
 
 			// Check if podcast is already generating
 			if (isPodcastGenerating() && looksLikePodcastRequest(userQuery)) {
-				toast.warning("A podcast is already being generated.");
+				toast.warning(t("podcast_generating"));
 				return;
 			}
 
 			const token = getBearerToken();
 			if (!token) {
-				toast.error("Not authenticated. Please log in again.");
+				toast.error(t("not_authenticated"));
 				return;
 			}
 
@@ -488,7 +490,7 @@ export default function NewChatPage() {
 					);
 				} catch (error) {
 					console.error("[NewChatPage] Failed to create thread:", error);
-					toast.error("Failed to start chat. Please try again.");
+					toast.error(t("start_failed"));
 					return;
 				}
 			}
@@ -888,7 +890,7 @@ export default function NewChatPage() {
 					error instanceof Error ? error.message : "Unknown error"
 				);
 
-				toast.error("Failed to get response. Please try again.");
+				toast.error(t("response_failed"));
 				// Update assistant message with error
 				setMessages((prev) =>
 					prev.map((m) =>
@@ -898,7 +900,7 @@ export default function NewChatPage() {
 									content: [
 										{
 											type: "text",
-											text: "Sorry, there was an error. Please try again.",
+											text: t("error_message"),
 										},
 									],
 								}
@@ -925,6 +927,7 @@ export default function NewChatPage() {
 			currentThread,
 			currentUser,
 			disabledTools,
+			t,
 		]
 	);
 
@@ -943,7 +946,7 @@ export default function NewChatPage() {
 
 			const token = getBearerToken();
 			if (!token) {
-				toast.error("Not authenticated. Please log in again.");
+				toast.error(t("not_authenticated"));
 				setIsRunning(false);
 				return;
 			}
@@ -1188,13 +1191,13 @@ export default function NewChatPage() {
 					return;
 				}
 				console.error("[NewChatPage] Resume error:", error);
-				toast.error("Failed to resume. Please try again.");
+				toast.error(t("resume_failed"));
 			} finally {
 				setIsRunning(false);
 				abortControllerRef.current = null;
 			}
 		},
-		[pendingInterrupt, messages, searchSpaceId, messageThinkingSteps]
+		[pendingInterrupt, messages, searchSpaceId, messageThinkingSteps, t]
 	);
 
 	useEffect(() => {
@@ -1267,7 +1270,7 @@ export default function NewChatPage() {
 	const handleRegenerate = useCallback(
 		async (newUserQuery?: string | null) => {
 			if (!threadId) {
-				toast.error("Cannot regenerate: no active chat thread");
+				toast.error(t("regenerate_no_thread"));
 				return;
 			}
 
@@ -1279,7 +1282,7 @@ export default function NewChatPage() {
 
 			const token = getBearerToken();
 			if (!token) {
-				toast.error("Not authenticated. Please log in again.");
+				toast.error(t("not_authenticated"));
 				return;
 			}
 
@@ -1533,7 +1536,7 @@ export default function NewChatPage() {
 					threadId,
 					error instanceof Error ? error.message : "Unknown error"
 				);
-				toast.error("Failed to regenerate response. Please try again.");
+				toast.error(t("regenerate_failed"));
 				// Update assistant message with error
 				setMessages((prev) =>
 					prev.map((m) =>
@@ -1550,7 +1553,7 @@ export default function NewChatPage() {
 				abortControllerRef.current = null;
 			}
 		},
-		[threadId, searchSpaceId, messages, setMessageThinkingSteps, disabledTools]
+		[threadId, searchSpaceId, messages, disabledTools, t]
 	);
 
 	// Handle editing a message - truncates history and regenerates with new query
@@ -1565,14 +1568,14 @@ export default function NewChatPage() {
 			}
 
 			if (!newUserQuery.trim()) {
-				toast.error("Cannot edit with empty message");
+				toast.error(t("edit_empty"));
 				return;
 			}
 
 			// Call regenerate with the new query
 			await handleRegenerate(newUserQuery.trim());
 		},
-		[handleRegenerate]
+		[handleRegenerate, t]
 	);
 
 	// Handle reloading/refreshing the last AI response
@@ -1638,7 +1641,7 @@ export default function NewChatPage() {
 	if (!threadId && urlChatId > 0) {
 		return (
 			<div className="flex h-[calc(100dvh-64px)] flex-col items-center justify-center gap-4">
-				<div className="text-destructive">Failed to load chat</div>
+				<div className="text-destructive">{t("load_failed_title")}</div>
 				<button
 					type="button"
 					onClick={() => {
@@ -1647,7 +1650,7 @@ export default function NewChatPage() {
 					}}
 					className="rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
 				>
-					Try Again
+					{t("try_again")}
 				</button>
 			</div>
 		);

@@ -3,6 +3,7 @@
 import { Zap } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
@@ -12,6 +13,7 @@ interface PageUsageDisplayProps {
 }
 
 export function PageUsageDisplay({ pagesUsed, pagesLimit }: PageUsageDisplayProps) {
+	const t = useTranslations("incentive");
 	const params = useParams();
 	const searchSpaceId = params.search_space_id;
 	const usagePercentage = (pagesUsed / pagesLimit) * 100;
@@ -21,7 +23,10 @@ export function PageUsageDisplay({ pagesUsed, pagesLimit }: PageUsageDisplayProp
 			<div className="space-y-2">
 				<div className="flex justify-between items-center text-xs">
 					<span className="text-muted-foreground">
-						{pagesUsed.toLocaleString()} / {pagesLimit.toLocaleString()} pages
+						{t("pages_usage", {
+							used: pagesUsed.toLocaleString(),
+							limit: pagesLimit.toLocaleString(),
+						})}
 					</span>
 					<span className="font-medium">{usagePercentage.toFixed(0)}%</span>
 				</div>
@@ -32,10 +37,10 @@ export function PageUsageDisplay({ pagesUsed, pagesLimit }: PageUsageDisplayProp
 				>
 					<span className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-accent-foreground">
 						<Zap className="h-3 w-3 shrink-0" />
-						Upgrade to PRO
+						{t("upgrade_title")}
 					</span>
 					<Badge className="h-4 rounded px-1 text-[10px] font-semibold leading-none bg-emerald-600 text-white border-transparent hover:bg-emerald-600">
-						FREE
+						{t("free_badge")}
 					</Badge>
 				</Link>
 			</div>

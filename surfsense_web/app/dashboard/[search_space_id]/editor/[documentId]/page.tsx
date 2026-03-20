@@ -5,6 +5,7 @@ import { AlertCircle, ArrowLeft, FileText } from "lucide-react";
 import { motion } from "motion/react";
 import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { hasUnsavedEditorChangesAtom, pendingEditorNavigationAtom } from "@/atoms/editor/ui.atoms";
@@ -71,6 +72,7 @@ function extractTitleFromMarkdown(markdown: string | null | undefined): string {
 }
 
 export default function EditorPage() {
+	const t = useTranslations("editor");
 	const params = useParams();
 	const router = useRouter();
 	const documentId = params.documentId as string;
@@ -164,9 +166,7 @@ export default function EditorPage() {
 				const data = await response.json();
 
 				if (data.source_markdown === undefined || data.source_markdown === null) {
-					setError(
-						"This document does not have editable content. Please re-upload to enable editing."
-					);
+					setError(t("not_editable"));
 					setLoading(false);
 					return;
 				}
@@ -189,7 +189,7 @@ export default function EditorPage() {
 		if (documentId) {
 			fetchDocument();
 		}
-	}, [documentId, params.search_space_id, isNewNote]);
+	}, [documentId, params.search_space_id, isNewNote, t]);
 
 	const isNote = isNewNote || document?.document_type === "NOTE";
 
@@ -211,7 +211,7 @@ export default function EditorPage() {
 	const handleSave = useCallback(async () => {
 		const token = getBearerToken();
 		if (!token) {
-			toast.error("Please login to save");
+			toast.error(t("login_required"));
 			redirectToLogin();
 			return;
 		}
@@ -252,7 +252,7 @@ export default function EditorPage() {
 				}
 
 				setHasUnsavedChanges(false);
-				toast.success("Note created successfully! Reindexing in background...");
+				toast.success(t("note_created"));
 				router.push(`/dashboard/${searchSpaceId}/new-chat`);
 			} else {
 				// Existing document — save
@@ -273,23 +273,19 @@ export default function EditorPage() {
 				}
 
 				setHasUnsavedChanges(false);
-				toast.success("Document saved! Reindexing in background...");
+				toast.success(t("document_saved"));
 				router.push(`/dashboard/${searchSpaceId}/new-chat`);
 			}
 		} catch (error) {
 			console.error("Error saving document:", error);
 			const errorMessage =
-				error instanceof Error
-					? error.message
-					: isNewNote
-						? "Failed to create note. Please try again."
-						: "Failed to save document. Please try again.";
+				error instanceof Error ? error.message : isNewNote ? t("create_failed") : t("save_failed");
 			setError(errorMessage);
 			toast.error(errorMessage);
 		} finally {
 			setSaving(false);
 		}
-	}, [isNewNote, searchSpaceId, documentId, params.search_space_id, router]);
+	}, [isNewNote, searchSpaceId, documentId, params.search_space_id, router, t]);
 
 	const handleBack = () => {
 		if (hasUnsavedChanges) {
@@ -336,7 +332,7 @@ export default function EditorPage() {
 							className="h-7 w-7 shrink-0 p-0"
 						>
 							<ArrowLeft className="h-4 w-4" />
-							<span className="sr-only">Back</span>
+							<span className="sr-only">{t("back")}</span>
 						</Button>
 						<FileText className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground shrink-0" />
 						<Skeleton className="h-5 w-40 rounded" />
@@ -384,7 +380,7 @@ export default function EditorPage() {
 						<CardHeader>
 							<div className="flex items-center gap-2">
 								<AlertCircle className="h-5 w-5 text-destructive" />
-								<CardTitle className="text-destructive">Error</CardTitle>
+								<CardTitle className="text-destructive">{t("error")}</CardTitle>
 							</div>
 							<CardDescription>{error}</CardDescription>
 						</CardHeader>
@@ -395,7 +391,7 @@ export default function EditorPage() {
 								className="gap-2"
 							>
 								<ArrowLeft className="h-4 w-4" />
-								Back
+								{t("back")}
 							</Button>
 						</CardContent>
 					</Card>
@@ -410,7 +406,7 @@ export default function EditorPage() {
 				<Card className="w-full max-w-md">
 					<CardContent className="flex flex-col items-center justify-center py-12">
 						<FileText className="h-12 w-12 text-muted-foreground mb-4" />
-						<p className="text-muted-foreground">Document not found</p>
+						<p className="text-muted-foreground">{t("not_found")}</p>
 					</CardContent>
 				</Card>
 			</div>
@@ -434,13 +430,13 @@ export default function EditorPage() {
 						className="h-7 w-7 shrink-0 p-0"
 					>
 						<ArrowLeft className="h-4 w-4" />
-						<span className="sr-only">Back</span>
+						<span className="sr-only">{t("back")}</span>
 					</Button>
 					<FileText className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground shrink-0" />
 					<div className="flex flex-col min-w-0">
 						<h1 className="text-base md:text-lg font-semibold truncate">{displayTitle}</h1>
 						{hasUnsavedChanges && (
-							<p className="text-[10px] md:text-xs text-muted-foreground">Unsaved changes</p>
+							<p className="text-[10px] md:text-xs text-muted-foreground">{t("unsaved_changes")}</p>
 						)}
 					</div>
 				</div>
@@ -483,20 +479,18 @@ export default function EditorPage() {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-						<AlertDialogDescription>
-							You have unsaved changes. Are you sure you want to leave?
-						</AlertDialogDescription>
+						<AlertDialogTitle>{t("unsaved_title")}</AlertDialogTitle>
+						<AlertDialogDescription>{t("unsaved_desc")}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel onClick={handleCancelLeave}>Cancel</AlertDialogCancel>
+						<AlertDialogCancel onClick={handleCancelLeave}>{t("cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={handleConfirmLeave}
 							className={buttonVariants({ variant: "secondary" })}
 						>
-							Leave without saving
+							{t("leave_without_saving")}
 						</AlertDialogAction>
-						<AlertDialogAction onClick={handleSaveAndLeave}>Save</AlertDialogAction>
+						<AlertDialogAction onClick={handleSaveAndLeave}>{t("save")}</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

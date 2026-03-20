@@ -3,6 +3,7 @@
 import { useAtomValue } from "jotai";
 import { AlertTriangle, Settings, Upload } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
 	createContext,
 	type FC,
@@ -90,6 +91,7 @@ const DocumentUploadPopupContent: FC<{
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
 }> = ({ isOpen, onOpenChange }) => {
+	const tUpload = useTranslations("upload_documents");
 	const searchSpaceId = useAtomValue(activeSearchSpaceIdAtom);
 	const { data: preferences = {}, isFetching: preferencesLoading } =
 		useAtomValue(llmPreferencesAtom);
@@ -136,10 +138,10 @@ const DocumentUploadPopupContent: FC<{
 						<div className="flex items-center gap-2 sm:gap-4 mb-2 sm:mb-6">
 							<div className="flex-1 min-w-0 pr-8 sm:pr-0">
 								<h2 className="text-base sm:text-2xl font-semibold tracking-tight">
-									Upload Documents
+									{tUpload("title")}
 								</h2>
 								<p className="text-xs sm:text-base text-muted-foreground mt-0.5 sm:mt-1 line-clamp-1 sm:line-clamp-none">
-									Upload and sync your documents to your search space
+									{tUpload("dialog_subtitle")}
 								</p>
 							</div>
 						</div>

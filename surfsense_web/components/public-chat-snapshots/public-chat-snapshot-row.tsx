@@ -2,6 +2,7 @@
 
 import { Check, Copy, ExternalLink, MessageSquare, Trash2 } from "lucide-react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ export function PublicChatSnapshotRow({
 	isDeleting = false,
 	memberMap,
 }: PublicChatSnapshotRowProps) {
+	const t = useTranslations("publicChatLinks");
 	const [copied, setCopied] = useState(false);
 	const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -80,7 +82,7 @@ export function PublicChatSnapshotRow({
 										</a>
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent>Open link</TooltipContent>
+								<TooltipContent>{t("open_link")}</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
 						{canDelete && (
@@ -97,7 +99,7 @@ export function PublicChatSnapshotRow({
 											<Trash2 className="h-3 w-3" />
 										</Button>
 									</TooltipTrigger>
-									<TooltipContent>Delete</TooltipContent>
+									<TooltipContent>{t("delete")}</TooltipContent>
 								</Tooltip>
 							</TooltipProvider>
 						)}
@@ -111,7 +113,7 @@ export function PublicChatSnapshotRow({
 						className="text-[10px] px-1.5 py-0.5 border-muted-foreground/20 text-muted-foreground"
 					>
 						<MessageSquare className="h-2.5 w-2.5 mr-1" />
-						{snapshot.message_count} messages
+						{t("message_count", { count: snapshot.message_count })}
 					</Badge>
 				</div>
 
@@ -141,7 +143,7 @@ export function PublicChatSnapshotRow({
 									)}
 								</Button>
 							</TooltipTrigger>
-							<TooltipContent>{copied ? "Copied!" : "Copy link"}</TooltipContent>
+							<TooltipContent>{copied ? t("copied") : t("copy_link")}</TooltipContent>
 						</Tooltip>
 					</TooltipProvider>
 				</div>

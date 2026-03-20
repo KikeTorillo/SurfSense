@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	type Column,
 	type ColumnDef,
 	type ColumnFiltersState,
 	flexRender,
@@ -12,6 +13,7 @@ import {
 	type PaginationState,
 	type Row,
 	type SortingState,
+	type Table as TanstackTable,
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
@@ -46,11 +48,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import React, { useCallback, useContext, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-	createLogMutationAtom,
-	deleteLogMutationAtom,
-	updateLogMutationAtom,
-} from "@/atoms/logs/log-mutation.atoms";
+import { deleteLogMutationAtom } from "@/atoms/logs/log-mutation.atoms";
 import { JsonMetadataViewer } from "@/components/json-metadata-viewer";
 import {
 	AlertDialog,
@@ -94,7 +92,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { CreateLogRequest, Log, UpdateLogRequest } from "@/contracts/types/log.types";
+import type { Log, LogSummary } from "@/contracts/types/log.types";
 import { type LogLevel, type LogStatus, useLogs, useLogsSummary } from "@/hooks/use-logs";
 import { cn } from "@/lib/utils";
 
@@ -132,23 +130,22 @@ const logStatusConfig = {
 function MessageDetails({
 	message,
 	taskName,
-	metadata,
 	createdAt,
 	children,
 }: {
 	message: string;
 	taskName?: string;
-	metadata?: any;
 	createdAt?: string;
 	children: React.ReactNode;
 }) {
+	const t = useTranslations("logs");
 	return (
 		<AlertDialog>
 			<AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
 			<AlertDialogContent className="max-w-3xl w-full">
 				<div className="flex items-start justify-between gap-4">
 					<div>
-						<AlertDialogTitle className="text-lg">Log details</AlertDialogTitle>
+						<AlertDialogTitle className="text-lg">{t("log_details")}</AlertDialogTitle>
 						{createdAt && (
 							<p className="text-xs text-muted-foreground mt-1">
 								{new Date(createdAt).toLocaleString()}
@@ -156,7 +153,7 @@ function MessageDetails({
 						)}
 					</div>
 					<div className="shrink-0">
-						<AlertDialogCancel className="text-sm">Close</AlertDialogCancel>
+						<AlertDialogCancel className="text-sm">{t("close")}</AlertDialogCancel>
 					</div>
 				</div>
 
@@ -187,14 +184,14 @@ const createColumns = (t: (key: string) => string): ColumnDef<Log>[] => [
 					table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
 				}
 				onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-				aria-label="Select all"
+				aria-label={t("select_all")}
 			/>
 		),
 		cell: ({ row }) => (
 			<Checkbox
 				checked={row.getIsSelected()}
 				onCheckedChange={(value) => row.toggleSelected(!!value)}
-				aria-label="Select row"
+				aria-label={t("select_row")}
 			/>
 		),
 		size: 28,
@@ -278,12 +275,7 @@ const createColumns = (t: (key: string) => string): ColumnDef<Log>[] => [
 			const createdAt = row.getValue("created_at") as string;
 
 			return (
-				<MessageDetails
-					message={message}
-					taskName={taskName}
-					metadata={row.original.log_metadata}
-					createdAt={createdAt}
-				>
+				<MessageDetails message={message} taskName={taskName} createdAt={createdAt}>
 					<div className="flex flex-col gap-1 max-w-[400px] cursor-pointer">
 						{taskName && (
 							<div
@@ -341,34 +333,6 @@ export default function LogsManagePage() {
 	const searchSpaceId = Number(params.search_space_id);
 
 	const { mutateAsync: deleteLogMutation } = useAtomValue(deleteLogMutationAtom);
-	const { mutateAsync: updateLogMutation } = useAtomValue(updateLogMutationAtom);
-	const { mutateAsync: createLogMutation } = useAtomValue(createLogMutationAtom);
-
-	const createLog = useCallback(
-		async (data: CreateLogRequest) => {
-			try {
-				await createLogMutation(data);
-				return true;
-			} catch (error) {
-				console.error("Failed to create log:", error);
-				return false;
-			}
-		},
-		[createLogMutation]
-	);
-
-	const updateLog = useCallback(
-		async (logId: number, data: UpdateLogRequest) => {
-			try {
-				await updateLogMutation({ logId, data });
-				return true;
-			} catch (error) {
-				console.error("Failed to update log:", error);
-				return false;
-			}
-		},
-		[updateLogMutation]
-	);
 
 	const deleteLog = useCallback(
 		async (id: number) => {
@@ -447,7 +411,7 @@ export default function LogsManagePage() {
 		const selectedRows = table.getSelectedRowModel().rows;
 
 		if (selectedRows.length === 0) {
-			toast.error("No rows selected");
+			toast.error(t("no_rows_selected"));
 			return;
 		}
 
@@ -458,16 +422,16 @@ export default function LogsManagePage() {
 			const allSuccessful = results.every((result) => result === true);
 
 			if (allSuccessful) {
-				toast.success(`Successfully deleted ${selectedRows.length} log(s)`);
+				toast.success(t("deleted_count", { count: selectedRows.length }));
 			} else {
-				toast.error("Some logs could not be deleted");
+				toast.error(t("partial_delete_failed"));
 			}
 
 			await refreshLogs();
 			table.resetRowSelection();
-		} catch (error: any) {
+		} catch (error) {
 			console.error("Error deleting logs:", error);
-			toast.error("Error deleting logs");
+			toast.error(t("delete_error"));
 		}
 	};
 
@@ -479,7 +443,7 @@ export default function LogsManagePage() {
 		setIsRefreshing(true);
 		try {
 			await Promise.all([refreshLogs(), refreshSummary()]);
-			toast.success("Logs refreshed");
+			toast.success(t("refreshed"));
 		} finally {
 			setIsRefreshing(false);
 		}
@@ -565,7 +529,7 @@ function LogsSummaryDashboard({
 	onRefresh,
 	isRefreshing = false,
 }: {
-	summary: any;
+	summary: LogSummary | undefined;
 	loading: boolean;
 	error: string | null;
 	onRefresh: () => void | Promise<void>;
@@ -579,8 +543,8 @@ function LogsSummaryDashboard({
 				initial={{ opacity: 0 }}
 				animate={{ opacity: 1 }}
 			>
-				{[...Array(4)].map((_, i) => (
-					<Card key={i}>
+				{["total", "active", "success", "failures"].map((id) => (
+					<Card key={id}>
 						<CardHeader className="pb-2">
 							<div className="h-4 bg-muted rounded animate-pulse" />
 						</CardHeader>
@@ -698,7 +662,7 @@ function LogsFilters({
 	onBulkDelete,
 	id,
 }: {
-	table: any;
+	table: TanstackTable<Log>;
 	uniqueLevels: string[];
 	uniqueStatuses: string[];
 	inputRef: React.RefObject<HTMLInputElement | null>;
@@ -775,8 +739,8 @@ function LogsFilters({
 						<DropdownMenuLabel>{t("toggle_columns")}</DropdownMenuLabel>
 						{table
 							.getAllColumns()
-							.filter((column: any) => column.getCanHide())
-							.map((column: any) => (
+							.filter((column) => column.getCanHide())
+							.map((column) => (
 								<DropdownMenuCheckboxItem
 									key={column.id}
 									className="capitalize"
@@ -836,7 +800,7 @@ function FilterDropdown({
 	t,
 }: {
 	title: string;
-	column: any;
+	column: Column<Log> | undefined;
 	options: string[];
 	id: string;
 	t: (key: string) => string;
@@ -910,13 +874,13 @@ function LogsTable({
 	id,
 	t,
 }: {
-	table: any;
+	table: TanstackTable<Log>;
 	logs: Log[];
 	loading: boolean;
 	error: string | null;
 	onRefresh: () => void;
 	id: string;
-	t: (key: string, params?: any) => string;
+	t: (key: string, params?: Record<string, unknown>) => string;
 }) {
 	if (loading) {
 		return (
@@ -928,7 +892,7 @@ function LogsTable({
 				<div className="flex h-[400px] w-full items-center justify-center">
 					<div className="flex flex-col items-center gap-2">
 						<div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-						<p className="text-sm text-muted-foreground">Loading logs...</p>
+						<p className="text-sm text-muted-foreground">{t("loading_logs")}</p>
 					</div>
 				</div>
 			</motion.div>
@@ -945,9 +909,9 @@ function LogsTable({
 				<div className="flex h-[400px] w-full items-center justify-center">
 					<div className="flex flex-col items-center gap-2">
 						<AlertCircle className="h-8 w-8 text-destructive" />
-						<p className="text-sm text-destructive">Error loading logs</p>
+						<p className="text-sm text-destructive">{t("error_loading_logs")}</p>
 						<Button variant="outline" size="sm" onClick={onRefresh}>
-							Retry
+							{t("retry")}
 						</Button>
 					</div>
 				</div>
@@ -982,9 +946,9 @@ function LogsTable({
 			>
 				<Table className="table-fixed">
 					<TableHeader>
-						{table.getHeaderGroups().map((headerGroup: any) => (
+						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id} className="hover:bg-transparent">
-								{headerGroup.headers.map((header: any) => (
+								{headerGroup.headers.map((header) => (
 									<TableHead
 										key={header.id}
 										style={{ width: `${header.getSize()}px` }}
@@ -1021,7 +985,7 @@ function LogsTable({
 					<TableBody>
 						<AnimatePresence mode="popLayout">
 							{table.getRowModel().rows?.length ? (
-								table.getRowModel().rows.map((row: any, index: number) => (
+								table.getRowModel().rows.map((row, index) => (
 									<motion.tr
 										key={row.id}
 										initial={{ opacity: 0, y: 10 }}
@@ -1041,7 +1005,7 @@ function LogsTable({
 											row.getIsSelected() ? "bg-muted/50" : ""
 										)}
 									>
-										{row.getVisibleCells().map((cell: any) => {
+										{row.getVisibleCells().map((cell) => {
 											const isCreatedAt = cell.column.id === "created_at";
 											const isMessage = cell.column.id === "message";
 											return (
@@ -1081,7 +1045,15 @@ function LogsTable({
 }
 
 // Pagination Component
-function LogsPagination({ table, id, t }: { table: any; id: string; t: (key: string) => string }) {
+function LogsPagination({
+	table,
+	id,
+	t,
+}: {
+	table: TanstackTable<Log>;
+	id: string;
+	t: (key: string) => string;
+}) {
 	return (
 		<div className="flex items-center justify-between gap-8 mt-6">
 			<motion.div
@@ -1182,7 +1154,9 @@ function LogsPagination({ table, id, t }: { table: any; id: string; t: (key: str
 function LogRowActions({ row, t }: { row: Row<Log>; t: (key: string) => string }) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
-	const { deleteLog, refreshLogs } = useContext(LogsContext)!;
+	const ctx = useContext(LogsContext);
+	if (!ctx) throw new Error("LogRowActions must be used within LogsContext");
+	const { deleteLog, refreshLogs } = ctx;
 	const log = row.original;
 
 	const handleDelete = async () => {

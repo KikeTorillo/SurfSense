@@ -2,6 +2,7 @@
 
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 const PAGE_SIZE = 50;
@@ -25,6 +26,7 @@ export function PaginationControls({
 	canPrev: boolean;
 	canNext: boolean;
 }) {
+	const t = useTranslations("documents");
 	const start = pageIndex * PAGE_SIZE + 1;
 	const end = Math.min((pageIndex + 1) * PAGE_SIZE, total);
 
@@ -48,7 +50,7 @@ export function PaginationControls({
 					className="h-8 w-8 disabled:opacity-40"
 					onClick={onFirst}
 					disabled={!canPrev}
-					aria-label="Go to first page"
+					aria-label={t("page_first")}
 				>
 					<ChevronFirst size={18} strokeWidth={2} />
 				</Button>
@@ -58,7 +60,7 @@ export function PaginationControls({
 					className="h-8 w-8 disabled:opacity-40"
 					onClick={onPrev}
 					disabled={!canPrev}
-					aria-label="Go to previous page"
+					aria-label={t("page_previous")}
 				>
 					<ChevronLeft size={18} strokeWidth={2} />
 				</Button>
@@ -68,7 +70,7 @@ export function PaginationControls({
 					className="h-8 w-8 disabled:opacity-40"
 					onClick={onNext}
 					disabled={!canNext}
-					aria-label="Go to next page"
+					aria-label={t("page_next")}
 				>
 					<ChevronRight size={18} strokeWidth={2} />
 				</Button>
@@ -78,7 +80,7 @@ export function PaginationControls({
 					className="h-8 w-8 disabled:opacity-40"
 					onClick={onLast}
 					disabled={!canNext}
-					aria-label="Go to last page"
+					aria-label={t("page_last")}
 				>
 					<ChevronLast size={18} strokeWidth={2} />
 				</Button>

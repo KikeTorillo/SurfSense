@@ -3,8 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { connectorsAtom } from "@/atoms/connectors/connector-query.atoms";
 import { documentTypeCountsAtom } from "@/atoms/documents/document-query.atoms";
@@ -20,26 +21,34 @@ interface TourStep {
 	placement: "top" | "bottom" | "left" | "right";
 }
 
-const TOUR_STEPS: TourStep[] = [
-	{
-		target: '[data-joyride="connector-icon"]',
-		title: "Connect your data sources",
-		content: "Connect and sync data from Gmail, Drive, Slack, Notion, Jira, Confluence, and more.",
-		placement: "bottom",
-	},
-	{
-		target: '[data-joyride="documents-sidebar"]',
-		title: "Manage your documents",
-		content: "Access and manage all your uploaded documents.",
-		placement: "right",
-	},
-	{
-		target: '[data-joyride="inbox-sidebar"]',
-		title: "Check your inbox",
-		content: "View mentions and notifications in one place.",
-		placement: "right",
-	},
+const TOUR_TARGETS = [
+	{ target: '[data-joyride="connector-icon"]', placement: "bottom" as const },
+	{ target: '[data-joyride="documents-sidebar"]', placement: "right" as const },
+	{ target: '[data-joyride="inbox-sidebar"]', placement: "right" as const },
 ];
+
+function getTourSteps(t: (key: string) => string): TourStep[] {
+	return [
+		{
+			target: TOUR_TARGETS[0].target,
+			title: t("tour_connect_title"),
+			content: t("tour_connect_desc"),
+			placement: TOUR_TARGETS[0].placement,
+		},
+		{
+			target: TOUR_TARGETS[1].target,
+			title: t("tour_documents_title"),
+			content: t("tour_documents_desc"),
+			placement: TOUR_TARGETS[1].placement,
+		},
+		{
+			target: TOUR_TARGETS[2].target,
+			title: t("tour_inbox_title"),
+			content: t("tour_inbox_desc"),
+			placement: TOUR_TARGETS[2].placement,
+		},
+	];
+}
 
 interface TooltipPosition {
 	top: number;
@@ -160,6 +169,7 @@ function TourTooltip({
 	onPrev,
 	onSkip,
 	isDarkMode,
+	t,
 }: {
 	step: TourStep;
 	stepIndex: number;
@@ -170,6 +180,7 @@ function TourTooltip({
 	onPrev: () => void;
 	onSkip: () => void;
 	isDarkMode: boolean;
+	t: (key: string) => string;
 }) {
 	const [contentKey, setContentKey] = useState(stepIndex);
 	const [shouldAnimate, setShouldAnimate] = useState(false);
@@ -277,7 +288,7 @@ function TourTooltip({
 			<div className="flex items-center gap-1.5">
 				{Array.from({ length: totalSteps }).map((_, i) => (
 					<div
-						key={TOUR_STEPS[i]?.target ?? `step-${i}`}
+						key={TOUR_TARGETS[i]?.target ?? `step-${i}`}
 						style={{
 							width: 6,
 							height: 6,
@@ -359,7 +370,7 @@ function TourTooltip({
 								className="text-sm font-medium transition-opacity hover:opacity-80"
 								style={{ color: mutedTextColor }}
 							>
-								Back
+								{t("tour_back")}
 							</button>
 						)}
 						{isFirstStep && (
@@ -372,7 +383,7 @@ function TourTooltip({
 								className="text-sm font-medium transition-opacity hover:opacity-80"
 								style={{ color: mutedTextColor }}
 							>
-								Skip
+								{t("tour_skip")}
 							</button>
 						)}
 						<button
@@ -384,7 +395,7 @@ function TourTooltip({
 							className="text-sm font-medium transition-opacity hover:opacity-80"
 							style={{ color: textColor }}
 						>
-							{isLastStep ? "Done" : "Next"}
+							{isLastStep ? t("tour_done") : t("tour_next")}
 						</button>
 					</div>
 				</div>
@@ -394,7 +405,9 @@ function TourTooltip({
 }
 
 export function OnboardingTour() {
+	const t = useTranslations("onboard");
 	const isMobile = useIsMobile();
+	const tourSteps = useMemo(() => getTourSteps(t), [t]);
 	const [isActive, setIsActive] = useState(false);
 	const [stepIndex, setStepIndex] = useState(0);
 	const [targetEl, setTargetEl] = useState<Element | null>(null);
@@ -428,7 +441,7 @@ export function OnboardingTour() {
 	const { data: connectors = [] } = useAtomValue(connectorsAtom);
 
 	const isDarkMode = resolvedTheme === "dark";
-	const currentStep = TOUR_STEPS[stepIndex];
+	const currentStep = tourSteps[stepIndex];
 
 	// Handle mounting for portal
 	useEffect(() => {
@@ -528,18 +541,18 @@ export function OnboardingTour() {
 		// User is new and hasn't seen tour - wait for DOM elements and start tour
 		const checkAndStartTour = () => {
 			// Check if all required elements exist
-			const connectorEl = document.querySelector(TOUR_STEPS[0].target);
-			const documentsEl = document.querySelector(TOUR_STEPS[1].target);
-			const inboxEl = document.querySelector(TOUR_STEPS[2].target);
+			const connectorEl = document.querySelector(TOUR_TARGETS[0].target);
+			const documentsEl = document.querySelector(TOUR_TARGETS[1].target);
+			const inboxEl = document.querySelector(TOUR_TARGETS[2].target);
 
 			if (connectorEl && documentsEl && inboxEl) {
 				// All elements found, start tour
 				setIsActive(true);
 				setTargetEl(connectorEl);
 				setSpotlightTargetEl(connectorEl);
-				setSpotlightStepTarget(TOUR_STEPS[0].target);
+				setSpotlightStepTarget(TOUR_TARGETS[0].target);
 				setTargetRect(connectorEl.getBoundingClientRect());
-				setPosition(calculatePosition(connectorEl, TOUR_STEPS[0].placement));
+				setPosition(calculatePosition(connectorEl, TOUR_TARGETS[0].placement));
 			} else {
 				// Retry after delay
 				setTimeout(checkAndStartTour, 200);
@@ -632,7 +645,7 @@ export function OnboardingTour() {
 	}, [targetEl, isActive]);
 
 	const handleNext = useCallback(() => {
-		if (stepIndex < TOUR_STEPS.length - 1) {
+		if (stepIndex < tourSteps.length - 1) {
 			retryCountRef.current = 0;
 			setStepIndex(stepIndex + 1);
 		} else {
@@ -643,7 +656,7 @@ export function OnboardingTour() {
 			}
 			setIsActive(false);
 		}
-	}, [stepIndex, user?.id]);
+	}, [stepIndex, user?.id, tourSteps.length]);
 
 	const handlePrev = useCallback(() => {
 		if (stepIndex > 0) {
@@ -720,7 +733,7 @@ export function OnboardingTour() {
 					type="button"
 					className="fixed inset-0 w-full h-full bg-transparent border-0 cursor-default"
 					onClick={handleOverlayClick}
-					aria-label="Close tour"
+					aria-label={t("tour_close")}
 				/>
 				{/* Only render Spotlight and TourTooltip when we have target data */}
 				{targetEl && position && currentStep && targetRect && (
@@ -735,13 +748,14 @@ export function OnboardingTour() {
 						<TourTooltip
 							step={currentStep}
 							stepIndex={stepIndex}
-							totalSteps={TOUR_STEPS.length}
+							totalSteps={tourSteps.length}
 							position={position}
 							targetRect={targetRect}
 							onNext={handleNext}
 							onPrev={handlePrev}
 							onSkip={handleSkip}
 							isDarkMode={isDarkMode}
+							t={t}
 						/>
 					</>
 				)}

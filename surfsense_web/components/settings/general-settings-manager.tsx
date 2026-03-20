@@ -75,7 +75,7 @@ export function GeneralSettingsManager({ searchSpaceId }: GeneralSettingsManager
 			await fetchSearchSpace();
 		} catch (error: any) {
 			console.error("Error saving search space details:", error);
-			toast.error(error.message || "Failed to save search space details");
+			toast.error(error.message || t("general_save_error"));
 		} finally {
 			setSaving(false);
 		}
@@ -111,18 +111,15 @@ export function GeneralSettingsManager({ searchSpaceId }: GeneralSettingsManager
 			<Alert className="bg-muted/50 py-3 md:py-4">
 				<Info className="h-3 w-3 md:h-4 md:w-4 shrink-0" />
 				<AlertDescription className="text-xs md:text-sm">
-					Update your search space name and description. These details help identify and organize
-					your workspace.
+					{t("general_info_alert")}
 				</AlertDescription>
 			</Alert>
 
 			{/* Search Space Details Card */}
 			<Card>
 				<CardHeader className="px-3 md:px-6 pt-3 md:pt-6 pb-2 md:pb-3">
-					<CardTitle className="text-base md:text-lg">Search Space Details</CardTitle>
-					<CardDescription className="text-xs md:text-sm">
-						Manage the basic information for this search space.
-					</CardDescription>
+					<CardTitle className="text-base md:text-lg">{t("general_card_title")}</CardTitle>
+					<CardDescription className="text-xs md:text-sm">{t("general_card_desc")}</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4 md:space-y-5 px-3 md:px-6 pb-3 md:pb-6">
 					<div className="space-y-1.5 md:space-y-2">

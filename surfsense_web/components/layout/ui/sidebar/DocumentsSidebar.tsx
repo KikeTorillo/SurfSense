@@ -273,7 +273,7 @@ export function DocumentsSidebar({
 				>
 					<Unplug className="size-4 shrink-0 text-muted-foreground" />
 					<span className="truncate text-xs text-muted-foreground">
-						{connectorCount > 0 ? "Manage connectors" : "Connect your connectors"}
+						{connectorCount > 0 ? tSidebar("manage_connectors") : tSidebar("connect_connectors")}
 					</span>
 					{connectorCount > 0 && (
 						<span className="shrink-0 rounded-full bg-muted-foreground/15 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
