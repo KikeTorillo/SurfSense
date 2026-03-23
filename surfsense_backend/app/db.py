@@ -96,6 +96,12 @@ class SearchSourceConnectorType(StrEnum):
     COMPOSIO_GOOGLE_CALENDAR_CONNECTOR = "COMPOSIO_GOOGLE_CALENDAR_CONNECTOR"
 
 
+class VoiceType(StrEnum):
+    PRESET = "preset"
+    DESIGN = "design"
+    CLONE = "clone"
+
+
 class PodcastStatus(StrEnum):
     PENDING = "pending"
     GENERATING = "generating"
@@ -240,9 +246,11 @@ class TTSProvider(StrEnum):
     """
     Enum for TTS providers supported by LiteLLM speech API.
     See: https://docs.litellm.ai/docs/text_to_speech
+    All TTS services (including local Kokoro, Qwen3-TTS) are now
+    OpenAI-compatible APIs accessed via api_base.
     """
 
-    KOKORO = "KOKORO"
+    KOKORO = "KOKORO"  # Kept for backward compatibility with existing DB records
     OPENAI = "OPENAI"
     AZURE = "AZURE"
     VERTEX_AI = "VERTEX_AI"
@@ -1030,6 +1038,43 @@ class SurfsenseDocsChunk(BaseModel, TimestampMixin):
     document = relationship("SurfsenseDocsDocument", back_populates="chunks")
 
 
+class VoiceProfile(BaseModel, TimestampMixin):
+    """Voice profile for the voice library — preset, designed, or cloned voices."""
+
+    __tablename__ = "voice_profiles"
+
+    name = Column(String(255), nullable=False)
+    search_space_id = Column(
+        Integer, ForeignKey("searchspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    voice_type = Column(
+        SQLAlchemyEnum(
+            VoiceType,
+            name="voice_type",
+            create_type=True,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+    )
+    preset_voice_id = Column(String(100), nullable=True)
+    design_instructions = Column(Text, nullable=True)
+    clone_profile_id = Column(String(255), nullable=True)
+    clone_ref_text = Column(Text, nullable=True)
+    style_instructions = Column(Text, nullable=True)
+    language = Column(String(10), nullable=True)
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+        onupdate=datetime.now(UTC),
+    )
+    created_by = Column(
+        UUID, ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+
+    search_space = relationship("SearchSpace", back_populates="voice_profiles")
+
+
 class PodcastSpeakerProfile(BaseModel, TimestampMixin):
     """Speaker profile for multi-speaker podcasts (1-4 speakers)."""
 
@@ -1343,8 +1388,8 @@ class SearchSpace(BaseModel, TimestampMixin):
         Integer, nullable=True, default=0
     )  # For image generation, defaults to Auto mode
     tts_config_id = Column(
-        Integer, nullable=True, default=None
-    )  # For TTS/podcast audio generation
+        Integer, nullable=True, default=0
+    )  # For TTS/podcast audio generation, defaults to Auto mode
 
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
@@ -1367,6 +1412,11 @@ class SearchSpace(BaseModel, TimestampMixin):
         "Podcast",
         back_populates="search_space",
         order_by="Podcast.id.desc()",
+        cascade="all, delete-orphan",
+    )
+    voice_profiles = relationship(
+        "VoiceProfile",
+        back_populates="search_space",
         cascade="all, delete-orphan",
     )
     podcast_speaker_profiles = relationship(

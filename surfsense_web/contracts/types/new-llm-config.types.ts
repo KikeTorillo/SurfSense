@@ -306,7 +306,7 @@ export const deleteTTSConfigResponse = z.object({
 
 /**
  * Global TTS Config - from YAML, has negative IDs
- * No Auto mode for TTS — typically one service is active.
+ * Auto mode (ID 0) uses LiteLLM Router for load balancing across TTS providers.
  */
 export const globalTTSConfig = z.object({
 	id: z.number(),
@@ -317,6 +317,7 @@ export const globalTTSConfig = z.object({
 	api_base: z.string().nullable().optional(),
 	litellm_params: z.record(z.string(), z.any()).nullable().optional(),
 	is_global: z.literal(true),
+	is_auto_mode: z.boolean().optional().default(false),
 });
 
 export const getGlobalTTSConfigsResponse = z.array(globalTTSConfig);

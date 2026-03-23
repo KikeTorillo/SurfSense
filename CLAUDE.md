@@ -170,6 +170,43 @@ Configuraciones preconfiguradas por el admin, disponibles para todos los usuario
 - **Frontend**: `atoms/<feature>/query.atoms.ts` (atom `global*Atom`) → `llm-role-manager.tsx` (dropdown con secciones "Global Configurations" / "Your Configurations")
 - **Resolución en tareas**: `podcast_tasks.py` → `_load_search_space_tts_config()` maneja IDs negativos leyendo de `GLOBAL_TTS_CONFIGS`
 
+### Biblioteca de Voces
+Sistema para crear y gestionar voces personalizadas para podcasts. Soporta 3 tipos de voz via Qwen3-TTS:
+
+- **Preset**: voces fijas de Qwen3-TTS (eric, serena, vivian...). Solo seleccionas una del dropdown.
+- **Diseñada (VoiceDesign)**: describes la voz en inglés ("A warm male narrator with deep voice...") y el modelo genera una voz sintética. Las instrucciones solo aceptan inglés/chino.
+- **Clonada (Base)**: subes un audio de referencia (10-15s, ≥24kHz) + transcripción exacta palabra por palabra. Si la transcripción no coincide, genera ruido.
+
+**Modelo BD**: `voice_profiles` (tabla) con `voice_type` enum (preset/design/clone), `preset_voice_id`, `design_instructions`, `clone_profile_id`, `clone_ref_text`, `language`
+
+**Backend**:
+- `app/routes/voice_profiles_routes.py` — CRUD + clone upload (ffmpeg convierte a 24kHz WAV) + preview vía HTTP directo al proxy
+- `app/agents/podcaster/utils.py` → `resolve_speaker_voice()` resuelve `voice_profile_id` → parámetros TTS según tipo (preset/design/clone)
+- `app/agents/podcaster/nodes.py` → `generate_audio()` agrupa diálogos por tipo de voz para minimizar switches de modelo GPU
+- `app/tasks/celery_tasks/podcast_tasks.py` → `_load_voice_profiles_map()` carga voice profiles referenciados por speakers
+- `app/agents/podcaster/models.py` → `Speaker` tiene campo opcional `voice_profile_id`
+
+**Frontend**:
+- `components/settings/voice-library-manager.tsx` — UI de biblioteca con 3 diálogos de creación
+- `components/settings/podcast-profile-manager.tsx` — dropdown de speaker voice muestra voces de biblioteca (SelectGroup) + voces legacy
+- `contracts/types/voice-profile.types.ts` — Zod schemas
+- `lib/apis/voice-profiles-api.service.ts` — API service con `previewVoice()` (Bearer token + base URL)
+- `atoms/voice-profiles/` — query + mutation atoms
+- i18n: namespace `voiceLibrarySettings` en los 5 locales
+
+**Infra**: Volume `voice-library` compartido entre backend SurfSense (`/shared_tmp/voice_library`) y qwen3-tts (`/app/voice_library`). Declarado como external en `docker-compose.dev.yml` (`llm-server_voice-library`).
+
+### Pipeline de Podcasts
+El pipeline genera podcasts multi-speaker con voces de la biblioteca:
+
+1. **Agente LLM** → genera outline (respeta `num_segments` con truncamiento) + transcript
+2. **Auto-selección** → `podcast.py` auto-selecciona episode/speaker profiles del search space
+3. **Agrupamiento** → diálogos se agrupan por tipo de voz (clone juntos, design juntos) para minimizar switches GPU
+4. **TTS** → bypass del LiteLLM Router para pasar `model=tts-1-es` (idioma) + `instruct` (VoiceDesign). Proxy hace GPU switch automático (llamacpp → qwen3-tts → genera → restaura llamacpp)
+5. **Combine** → FFmpeg concatena todos los clips en orden original
+
+**Batch size**: `BATCH_SIZE = 1` (secuencial) para evitar timeouts con Qwen3-TTS local
+
 ## Convenciones de código
 
 ### Frontend (Biome)

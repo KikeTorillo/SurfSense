@@ -176,6 +176,35 @@ def initialize_llm_router():
         print(f"Warning: Failed to initialize LLM Router: {e}")
 
 
+def load_tts_router_settings():
+    """
+    Load router settings for TTS Auto mode from YAML file.
+
+    Returns:
+        dict: Router settings dictionary
+    """
+    default_settings = {
+        "routing_strategy": "usage-based-routing",
+        "num_retries": 2,
+        "allowed_fails": 3,
+        "cooldown_time": 60,
+    }
+
+    global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
+
+    if not global_config_file.exists():
+        return default_settings
+
+    try:
+        with open(global_config_file, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+            settings = data.get("tts_router_settings", {})
+            return {**default_settings, **settings}
+    except Exception as e:
+        print(f"Warning: Failed to load TTS router settings: {e}")
+        return default_settings
+
+
 def initialize_image_gen_router():
     """
     Initialize the Image Generation Router service for Auto mode.
@@ -201,6 +230,30 @@ def initialize_image_gen_router():
         )
     except Exception as e:
         print(f"Warning: Failed to initialize Image Generation Router: {e}")
+
+
+def initialize_tts_router():
+    """
+    Initialize the TTS Router service for Auto mode.
+    This should be called during application startup.
+    """
+    tts_configs = load_global_tts_configs()
+    router_settings = load_tts_router_settings()
+
+    if not tts_configs:
+        print("Info: No global TTS configs found, TTS Auto mode will not be available")
+        return
+
+    try:
+        from app.services.tts_router_service import TTSRouterService
+
+        TTSRouterService.initialize(tts_configs, router_settings)
+        print(
+            f"Info: TTS Router initialized with {len(tts_configs)} models "
+            f"(strategy: {router_settings.get('routing_strategy', 'usage-based-routing')})"
+        )
+    except Exception as e:
+        print(f"Warning: Failed to initialize TTS Router: {e}")
 
 
 class Config:
@@ -334,6 +387,9 @@ class Config:
 
     # Global TTS Configurations (optional)
     GLOBAL_TTS_CONFIGS = load_global_tts_configs()
+
+    # Router settings for TTS Auto mode
+    TTS_ROUTER_SETTINGS = load_tts_router_settings()
 
     # Chonkie Configuration | Edit this to your needs
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")

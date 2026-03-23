@@ -69,6 +69,9 @@ class Speaker(BaseModel):
     tts_config: Optional[Dict[str, Any]] = Field(
         None, description="Override TTS config (e.g. api_base) for this speaker"
     )
+    voice_profile_id: Optional[int] = Field(
+        None, description="Reference to a voice profile in the voice library"
+    )
 
     @field_validator("name")
     @classmethod
@@ -93,9 +96,13 @@ class SpeakerProfile(BaseModel):
         names = [s.name for s in v]
         if len(names) != len(set(names)):
             raise ValueError("Speaker names must be unique")
-        voice_ids = [s.voice_id for s in v]
-        if len(voice_ids) != len(set(voice_ids)):
-            raise ValueError("Voice IDs must be unique")
+        # Only enforce unique voice_ids when no voice profiles are used
+        # (voice profiles can share the same voice_id like "voice_design")
+        speakers_without_profiles = [s for s in v if not s.voice_profile_id]
+        if speakers_without_profiles:
+            voice_ids = [s.voice_id for s in speakers_without_profiles]
+            if len(voice_ids) != len(set(voice_ids)):
+                raise ValueError("Voice IDs must be unique")
         return v
 
     def get_speaker_names(self) -> List[str]:

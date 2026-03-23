@@ -12,7 +12,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.db import TTSProvider
 
-
 # =============================================================================
 # TTSConfig CRUD Schemas
 # =============================================================================
@@ -89,12 +88,12 @@ class GlobalTTSConfigRead(BaseModel):
     """
     Schema for reading global TTS configs from YAML.
     Global configs have negative IDs. API key is hidden.
-    No Auto mode for TTS — typically one service is active.
+    Auto mode (ID 0) uses LiteLLM Router for load balancing.
     """
 
     id: int = Field(
         ...,
-        description="Config ID: negative for global configs",
+        description="Config ID: 0 for Auto mode, negative for global configs",
     )
     name: str
     description: str | None = None
@@ -103,3 +102,4 @@ class GlobalTTSConfigRead(BaseModel):
     api_base: str | None = None
     litellm_params: dict[str, Any] | None = None
     is_global: bool = True
+    is_auto_mode: bool = False

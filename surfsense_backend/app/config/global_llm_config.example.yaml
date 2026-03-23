@@ -249,25 +249,45 @@ global_image_generation_configs:
 # =============================================================================
 # TTS (Text-to-Speech) Configuration
 # =============================================================================
-# These configurations power podcast audio generation using litellm.aspeech()
-# or local TTS services like Kokoro.
+# These configurations power podcast audio generation using litellm.aspeech().
+# All TTS services are OpenAI-compatible APIs (including local ones like Kokoro
+# and Qwen3-TTS running in llm-server).
 #
-# Supported providers: KOKORO (local), OPENAI, AZURE, VERTEX_AI
-# No Auto mode for TTS — typically one service is active.
+# Supported providers: OPENAI, AZURE, VERTEX_AI
+# Auto mode (ID 0) uses LiteLLM Router for load balancing across all TTS configs.
+
+# Router Settings for TTS Auto Mode
+tts_router_settings:
+  routing_strategy: "usage-based-routing"
+  num_retries: 2
+  allowed_fails: 3
+  cooldown_time: 60
 
 global_tts_configs:
-  # Example: Local Kokoro TTS (default, no API key needed)
+  # Qwen3-TTS (local, GPU, via llm-server proxy with auto GPU switching)
+  # OpenAI-compatible via proxy orchestrator
   - id: -1
-    name: "Kokoro (Local)"
-    description: "Local Kokoro TTS service — free, no API key required"
-    provider: "KOKORO"
-    model_name: "local/kokoro"
-    api_key: ""
-    api_base: ""
+    name: "Qwen3-TTS (Local)"
+    description: "Local Qwen3-TTS — GPU, high quality, auto GPU switching"
+    provider: "OPENAI"
+    model_name: "openai/tts-1"
+    api_key: "local"
+    api_base: "http://comfyui-proxy:8080/v1"
     litellm_params: {}
 
-  # Example: OpenAI TTS
+  # Example: Kokoro TTS (local, CPU, always running)
+  # Useful as a fast fallback but should NOT be mixed with GPU models in Auto mode
   # - id: -2
+  #   name: "Kokoro (Local)"
+  #   description: "Local Kokoro TTS — CPU, free, no API key required"
+  #   provider: "OPENAI"
+  #   model_name: "openai/tts-1"
+  #   api_key: "local"
+  #   api_base: "http://kokoro-tts:8880/v1"
+  #   litellm_params: {}
+
+  # Example: OpenAI TTS (cloud)
+  # - id: -3
   #   name: "OpenAI TTS-1"
   #   description: "OpenAI text-to-speech with natural voices"
   #   provider: "OPENAI"

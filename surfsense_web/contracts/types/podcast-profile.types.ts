@@ -12,6 +12,7 @@ export const speakerSchema = z.object({
 	tts_provider: z.string().nullable().optional(),
 	tts_model: z.string().nullable().optional(),
 	tts_config: z.record(z.string(), z.any()).nullable().optional(),
+	voice_profile_id: z.number().nullable().optional(),
 });
 
 // =============================================================================

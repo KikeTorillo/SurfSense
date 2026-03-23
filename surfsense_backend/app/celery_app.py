@@ -18,10 +18,11 @@ def init_worker(**kwargs):
     This ensures the Auto mode (LiteLLM Router) is available for background tasks
     like document summarization and image generation.
     """
-    from app.config import initialize_image_gen_router, initialize_llm_router
+    from app.config import initialize_image_gen_router, initialize_llm_router, initialize_tts_router
 
     initialize_llm_router()
     initialize_image_gen_router()
+    initialize_tts_router()
 
 
 # Get Celery configuration from environment

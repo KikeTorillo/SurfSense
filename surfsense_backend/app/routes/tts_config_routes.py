@@ -34,10 +34,32 @@ router = APIRouter(tags=["TTS Configs"])
 async def get_global_tts_configs(
     user: User = Depends(current_active_user),
 ):
-    """Get all global TTS configs. API keys are hidden. No Auto mode."""
+    """
+    Get all global TTS configs. API keys are hidden.
+
+    Includes:
+    - Auto mode (ID 0): Uses LiteLLM Router for automatic load balancing
+    - Global configs (negative IDs): Individual pre-configured TTS providers
+    """
     try:
         global_configs = config.GLOBAL_TTS_CONFIGS
         safe_configs = []
+
+        # Include Auto mode if there are global configs to route to
+        if global_configs and len(global_configs) > 0:
+            safe_configs.append(
+                {
+                    "id": 0,
+                    "name": "Auto (Fastest)",
+                    "description": "Automatically routes requests across available TTS providers for optimal performance and rate limit handling.",
+                    "provider": "AUTO",
+                    "model_name": "auto",
+                    "api_base": None,
+                    "litellm_params": {},
+                    "is_global": True,
+                    "is_auto_mode": True,
+                }
+            )
 
         for cfg in global_configs:
             safe_configs.append(
@@ -50,6 +72,7 @@ async def get_global_tts_configs(
                     "api_base": cfg.get("api_base") or None,
                     "litellm_params": cfg.get("litellm_params", {}),
                     "is_global": True,
+                    "is_auto_mode": False,
                 }
             )
 

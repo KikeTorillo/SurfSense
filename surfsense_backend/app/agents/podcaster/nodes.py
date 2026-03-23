@@ -12,8 +12,8 @@ from langchain_core.runnables import RunnableConfig
 from litellm import aspeech
 
 from app.config import config as app_config
-from app.services.kokoro_tts_service import get_kokoro_tts_service
 from app.services.llm_service import get_agent_llm
+from app.services.tts_router_service import TTSRouterService
 
 from .configuration import Configuration
 from .models import (
@@ -25,7 +25,11 @@ from .models import (
     outline_parser,
     resolve_language_name,
 )
-from .prompts import get_outline_prompt, get_podcast_generation_prompt, get_transcript_segment_prompt
+from .prompts import (
+    get_outline_prompt,
+    get_podcast_generation_prompt,
+    get_transcript_segment_prompt,
+)
 from .state import PodcastTranscriptEntry, PodcastTranscripts, State
 from .utils import get_voice_for_provider, resolve_speaker_voice
 
@@ -142,9 +146,10 @@ async def create_merged_podcast_audio(
 
     # Resolve TTS config: search space config → env vars
     ss_tts = state.search_space_tts_config
-    tts_service = (ss_tts.get("provider_string") if ss_tts else None) or app_config.TTS_SERVICE
-    tts_api_base = (ss_tts.get("api_base") if ss_tts else None) or app_config.TTS_SERVICE_API_BASE
-    tts_api_key = (ss_tts.get("api_key") if ss_tts else None) or app_config.TTS_SERVICE_API_KEY
+    use_auto_mode = ss_tts.get("is_auto_mode") if ss_tts else False
+    tts_service = (ss_tts.get("provider_string") if ss_tts and not use_auto_mode else None) or app_config.TTS_SERVICE
+    tts_api_base = (ss_tts.get("api_base") if ss_tts and not use_auto_mode else None) or app_config.TTS_SERVICE_API_BASE
+    tts_api_key = (ss_tts.get("api_key") if ss_tts and not use_auto_mode else None) or app_config.TTS_SERVICE_API_KEY
 
     # Generate audio for each transcript segment
     audio_files = []
@@ -159,52 +164,37 @@ async def create_merged_podcast_audio(
             dialog = segment.get("dialog", "")
 
         # Select voice based on speaker_id
-        voice = get_voice_for_provider(tts_service, speaker_id)
+        voice = get_voice_for_provider(tts_service or "openai/tts-1", speaker_id)
 
-        # Generate a unique filename for this segment
-        if tts_service == "local/kokoro":
-            # Kokoro generates WAV files
-            filename = f"{temp_dir}/{session_id}_{index}.wav"
-        else:
-            # Other services generate MP3 files
-            filename = f"{temp_dir}/{session_id}_{index}.mp3"
+        filename = f"{temp_dir}/{session_id}_{index}.mp3"
 
         try:
-            if tts_service == "local/kokoro":
-                # Use Kokoro TTS service
-                kokoro_service = await get_kokoro_tts_service(
-                    lang_code="a"
-                )  # American English
-                audio_path = await kokoro_service.generate_speech(
-                    text=dialog, voice=voice, speed=1.0, output_path=filename
+            if use_auto_mode and TTSRouterService.is_initialized():
+                response = await TTSRouterService.aspeech(
+                    input=dialog,
+                    voice=voice,
+                    max_retries=2,
+                    timeout=600,
                 )
-                return audio_path
             else:
+                kwargs: dict[str, Any] = {
+                    "model": tts_service,
+                    "voice": voice,
+                    "input": dialog,
+                    "max_retries": 2,
+                    "timeout": 600,
+                }
                 if tts_api_base:
-                    response = await aspeech(
-                        model=tts_service,
-                        api_base=tts_api_base,
-                        api_key=tts_api_key,
-                        voice=voice,
-                        input=dialog,
-                        max_retries=2,
-                        timeout=600,
-                    )
-                else:
-                    response = await aspeech(
-                        model=tts_service,
-                        api_key=tts_api_key,
-                        voice=voice,
-                        input=dialog,
-                        max_retries=2,
-                        timeout=600,
-                    )
+                    kwargs["api_base"] = tts_api_base
+                if tts_api_key:
+                    kwargs["api_key"] = tts_api_key
 
-                # Save the audio to a file - use proper streaming method
-                with open(filename, "wb") as f:
-                    f.write(response.content)
+                response = await aspeech(**kwargs)
 
-                return filename
+            with open(filename, "wb") as f:
+                f.write(response.content)
+
+            return filename
         except Exception as e:
             print(f"Error generating speech for segment {index}: {e!s}")
             raise
@@ -327,6 +317,14 @@ async def generate_outline(state: State, config: RunnableConfig) -> dict[str, An
         else:
             raise ValueError(f"Could not parse outline from LLM response: {cleaned[:200]}")
 
+    # Enforce num_segments limit
+    if len(outline.segments) > state.num_segments:
+        logger.warning(
+            f"LLM generated {len(outline.segments)} segments but "
+            f"{state.num_segments} requested — truncating"
+        )
+        outline = Outline(segments=outline.segments[:state.num_segments])
+
     logger.info(f"Generated outline with {len(outline.segments)} segments")
     return {"outline": outline}
 
@@ -417,59 +415,109 @@ async def generate_audio(state: State, config: RunnableConfig) -> dict[str, Any]
     temp_dir = shared_base / "temp_audio"
     temp_dir.mkdir(parents=True, exist_ok=True)
 
-    BATCH_SIZE = 5
+    BATCH_SIZE = 1
     audio_clips: list[str] = []
 
     async def _tts_one(dialogue: Dialogue, index: int) -> str:
         """Generate TTS for a single dialogue entry."""
         speaker = profile.get_speaker_by_name(dialogue.speaker)
+
+        # Check if search space is in Auto mode
+        ss_tts = state.search_space_tts_config
+        use_auto_mode = ss_tts.get("is_auto_mode") if ss_tts else False
+
         voice_cfg = resolve_speaker_voice(
             speaker=speaker,
             profile=profile,
             global_tts_service=app_config.TTS_SERVICE or "openai/tts-1",
             global_tts_api_base=app_config.TTS_SERVICE_API_BASE,
             global_tts_api_key=app_config.TTS_SERVICE_API_KEY,
-            search_space_tts_config=state.search_space_tts_config,
+            search_space_tts_config=ss_tts if not use_auto_mode else None,
+            voice_profiles_map=state.voice_profiles_map,
         )
 
-        provider = voice_cfg["provider"]
         voice = voice_cfg["voice"]
-
-        if provider == "local/kokoro":
-            filename = f"{temp_dir}/{session_id}_{index:04d}.wav"
-            kokoro_service = await get_kokoro_tts_service(lang_code="a")
-            await kokoro_service.generate_speech(
-                text=dialogue.dialogue, voice=voice, speed=1.0, output_path=filename
-            )
-            return filename
-
+        instruct = voice_cfg.get("instruct")
         filename = f"{temp_dir}/{session_id}_{index:04d}.mp3"
-        kwargs: dict[str, Any] = {
-            "model": provider,
-            "voice": voice,
-            "input": dialogue.dialogue,
-            "max_retries": 2,
-            "timeout": 600,
-        }
-        if voice_cfg["api_base"]:
-            kwargs["api_base"] = voice_cfg["api_base"]
-        if voice_cfg["api_key"]:
-            kwargs["api_key"] = voice_cfg["api_key"]
 
-        response = await aspeech(**kwargs)
+        if use_auto_mode and TTSRouterService.is_initialized():
+            # Bypass router to use language-specific model and extra params
+            deployment = TTSRouterService.get_first_deployment_params()
+            if deployment:
+                base_model = deployment.get("model", "openai/tts-1")
+                lang_code = state.language
+                if lang_code and lang_code not in ("en", "en-US", "en-GB"):
+                    lang_suffix = lang_code.split("-")[0]
+                    model = f"{base_model}-{lang_suffix}"
+                else:
+                    model = base_model
+
+                kwargs: dict[str, Any] = {
+                    "model": model,
+                    "voice": voice,
+                    "input": dialogue.dialogue,
+                    "api_base": deployment.get("api_base"),
+                    "api_key": deployment.get("api_key"),
+                    "max_retries": 2,
+                    "timeout": 600,
+                }
+                if instruct:
+                    kwargs["extra_body"] = {"instructions": instruct}
+                response = await aspeech(**kwargs)
+            else:
+                response = await TTSRouterService.aspeech(
+                    input=dialogue.dialogue,
+                    voice=voice,
+                    max_retries=2,
+                    timeout=600,
+                )
+        else:
+            provider = voice_cfg["provider"]
+            kwargs: dict[str, Any] = {
+                "model": provider,
+                "voice": voice,
+                "input": dialogue.dialogue,
+                "max_retries": 2,
+                "timeout": 600,
+            }
+            if voice_cfg["api_base"]:
+                kwargs["api_base"] = voice_cfg["api_base"]
+            if voice_cfg["api_key"]:
+                kwargs["api_key"] = voice_cfg["api_key"]
+
+            response = await aspeech(**kwargs)
+
         with open(filename, "wb") as f:
             f.write(response.content)
         return filename
 
-    # Process in batches
-    for batch_start in range(0, len(state.transcript), BATCH_SIZE):
-        batch = state.transcript[batch_start : batch_start + BATCH_SIZE]
-        tasks = [
-            _tts_one(dialogue, batch_start + i)
-            for i, dialogue in enumerate(batch)
-        ]
-        batch_results = await asyncio.gather(*tasks)
-        audio_clips.extend(batch_results)
+    # Group dialogues by voice type to minimize model switches
+    # (switching between CustomVoice/VoiceDesign/Base takes ~30s each)
+    vp_map = state.voice_profiles_map or {}
+    groups: dict[str, list[tuple[int, Dialogue]]] = {}
+    for i, d in enumerate(state.transcript):
+        speaker = profile.get_speaker_by_name(d.speaker)
+        voice_key = "default"
+        if speaker.voice_profile_id and speaker.voice_profile_id in vp_map:
+            voice_key = vp_map[speaker.voice_profile_id].get("voice_type", "default")
+        groups.setdefault(voice_key, []).append((i, d))
+
+    if len(groups) > 1:
+        logger.info(
+            f"Grouped {len(state.transcript)} dialogues into {len(groups)} voice types: "
+            f"{', '.join(f'{k}({len(v)})' for k, v in groups.items())}"
+        )
+
+    # Generate audio by group (minimizes model switches)
+    indexed_clips: list[tuple[int, str]] = []
+    for group_dialogues in groups.values():
+        for orig_idx, dialogue in group_dialogues:
+            filename = await _tts_one(dialogue, orig_idx)
+            indexed_clips.append((orig_idx, filename))
+
+    # Reorder to original dialogue sequence for combine_audio
+    indexed_clips.sort(key=lambda x: x[0])
+    audio_clips = [f for _, f in indexed_clips]
 
     logger.info(f"Generated {len(audio_clips)} audio clips")
     return {"audio_clips": audio_clips}

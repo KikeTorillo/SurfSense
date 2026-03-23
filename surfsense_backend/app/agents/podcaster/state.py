@@ -57,3 +57,6 @@ class State:
 
     # TTS config from search space (loaded from DB)
     search_space_tts_config: Optional[dict] = None
+
+    # Voice profiles map: voice_profile_id -> VoiceProfile row (dict)
+    voice_profiles_map: Optional[dict] = None

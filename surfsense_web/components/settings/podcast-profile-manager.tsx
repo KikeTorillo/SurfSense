@@ -58,7 +58,9 @@ import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
+	SelectGroup,
 	SelectItem,
+	SelectLabel,
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
@@ -67,6 +69,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { VoiceLibraryManager } from "@/components/settings/voice-library-manager";
+import { voiceProfilesAtom } from "@/atoms/voice-profiles/voice-profiles-query.atoms";
 import { PODCAST_TEMPLATES, type PodcastTemplate } from "@/contracts/enums/podcast-templates";
 import { getVoicesByProvider, LANGUAGES, TTS_PROVIDERS } from "@/contracts/enums/tts-providers";
 import type {
@@ -95,6 +99,7 @@ const DEFAULT_SPEAKER: Speaker = {
 	voice_id: "",
 	backstory: "",
 	personality: "",
+	voice_profile_id: null,
 };
 
 // =============================================================================
@@ -187,6 +192,9 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 		error: episodesFetchError,
 		refetch: refreshEpisodes,
 	} = useAtomValue(episodeProfilesAtom);
+
+	// Voice library
+	const { data: voiceProfiles } = useAtomValue(voiceProfilesAtom);
 
 	// Permissions
 	const { data: access } = useAtomValue(myAccessAtom);
@@ -498,6 +506,13 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 					</Alert>
 				</motion.div>
 			)}
+
+			{/* ================================================================= */}
+			{/* Voice Library Section                                              */}
+			{/* ================================================================= */}
+			<VoiceLibraryManager canCreate={canCreate} canDelete={canDelete} />
+
+			<Separator />
 
 			{/* ================================================================= */}
 			{/* Speaker Profiles Section                                          */}
@@ -1027,7 +1042,54 @@ export function PodcastProfileManager({ searchSpaceId }: PodcastProfileManagerPr
 											</div>
 											<div className="space-y-1.5">
 												<Label className="text-xs">{t("voice_id_label")}</Label>
-												{voiceSuggestions.length > 0 ? (
+												{voiceProfiles && voiceProfiles.length > 0 ? (
+													<Select
+														value={speaker.voice_profile_id ? String(speaker.voice_profile_id) : speaker.voice_id}
+														onValueChange={(val) => {
+															const vp = voiceProfiles.find((p) => String(p.id) === val);
+															if (vp) {
+																setSpeakerForm((prev) => ({
+																	...prev,
+																	speakers: prev.speakers.map((s, i) =>
+																		i === idx
+																			? {
+																					...s,
+																					voice_profile_id: vp.id,
+																					voice_id: vp.preset_voice_id || "voice_design",
+																				}
+																			: s
+																	),
+																}));
+															} else {
+																updateSpeakerField(idx, "voice_id", val);
+															}
+														}}
+													>
+														<SelectTrigger className="h-8 text-sm">
+															<SelectValue placeholder={t("select_voice")} />
+														</SelectTrigger>
+														<SelectContent>
+															<SelectGroup>
+																<SelectLabel>{t("voice_library_group")}</SelectLabel>
+																{voiceProfiles.map((vp) => (
+																	<SelectItem key={vp.id} value={String(vp.id)}>
+																		{vp.name} ({vp.voice_type === "preset" ? vp.preset_voice_id : vp.voice_type})
+																	</SelectItem>
+																))}
+															</SelectGroup>
+															{voiceSuggestions.length > 0 && (
+																<SelectGroup>
+																	<SelectLabel>{t("provider_voices_group")}</SelectLabel>
+																	{voiceSuggestions.map((v) => (
+																		<SelectItem key={`legacy-${v.value}`} value={v.value}>
+																			{v.label}
+																		</SelectItem>
+																	))}
+																</SelectGroup>
+															)}
+														</SelectContent>
+													</Select>
+												) : voiceSuggestions.length > 0 ? (
 													<Select
 														value={speaker.voice_id}
 														onValueChange={(val) => updateSpeakerField(idx, "voice_id", val)}

@@ -489,11 +489,22 @@ async def _get_tts_config_by_id(
 ) -> dict | None:
     """
     Get a TTS config by ID as a dictionary.
-    Returns global config for negative IDs, DB TTSConfig for positive IDs,
-    or None for None/non-existent IDs.
+    Returns Auto mode for ID 0, global config for negative IDs,
+    DB TTSConfig for positive IDs, or None for None/non-existent IDs.
     """
-    if not config_id:
+    if config_id is None:
         return None
+
+    if config_id == 0:
+        return {
+            "id": 0,
+            "name": "Auto (Fastest)",
+            "description": "Automatically routes requests across available TTS providers for optimal performance and rate limit handling.",
+            "provider": "AUTO",
+            "model_name": "auto",
+            "is_global": True,
+            "is_auto_mode": True,
+        }
 
     if config_id < 0:
         for cfg in config.GLOBAL_TTS_CONFIGS:

@@ -12,7 +12,15 @@ from app.agents.podcaster.models import SpeakerProfile
 from app.agents.podcaster.state import State as PodcasterState
 from app.celery_app import celery_app
 from app.config import config
-from app.db import Podcast, PodcastEpisodeProfile, PodcastSpeakerProfile, PodcastStatus, SearchSpace, TTSConfig
+from app.db import (
+    Podcast,
+    PodcastEpisodeProfile,
+    PodcastSpeakerProfile,
+    PodcastStatus,
+    SearchSpace,
+    TTSConfig,
+    VoiceProfile,
+)
 from app.tasks.celery_tasks import get_celery_session_maker
 
 logger = logging.getLogger(__name__)
@@ -151,8 +159,40 @@ async def _load_profiles(
     return speaker_profile, episode_row, use_legacy
 
 
+async def _load_voice_profiles_map(
+    session, speaker_profile: Optional[SpeakerProfile]
+) -> Optional[dict[int, dict]]:
+    """Load voice profiles referenced by speakers into a lookup map."""
+    if not speaker_profile:
+        return None
+
+    profile_ids = [
+        s.voice_profile_id
+        for s in speaker_profile.speakers
+        if s.voice_profile_id
+    ]
+    if not profile_ids:
+        return None
+
+    result = await session.execute(
+        select(VoiceProfile).filter(VoiceProfile.id.in_(profile_ids))
+    )
+    rows = result.scalars().all()
+    return {
+        row.id: {
+            "voice_type": row.voice_type.value if row.voice_type else None,
+            "preset_voice_id": row.preset_voice_id,
+            "design_instructions": row.design_instructions,
+            "clone_profile_id": row.clone_profile_id,
+            "clone_ref_text": row.clone_ref_text,
+            "style_instructions": row.style_instructions,
+            "language": row.language,
+        }
+        for row in rows
+    }
+
+
 _TTS_PROVIDER_TO_LITELLM = {
-    "KOKORO": "local/kokoro",
     "OPENAI": "openai",
     "AZURE": "azure",
     "VERTEX_AI": "vertex_ai",
@@ -164,23 +204,28 @@ async def _load_search_space_tts_config(
 ) -> Optional[dict]:
     """Load the TTSConfig assigned to a search space, if any.
 
-    Supports both positive IDs (DB TTSConfig) and negative IDs (global YAML configs).
+    Supports:
+    - ID 0: Auto mode (uses TTS Router for load balancing)
+    - Negative IDs: Global YAML configs
+    - Positive IDs: DB TTSConfig
     """
     result = await session.execute(
         select(SearchSpace).filter(SearchSpace.id == search_space_id)
     )
     search_space = result.scalars().first()
-    if not search_space or not search_space.tts_config_id:
+    if not search_space or search_space.tts_config_id is None:
         return None
 
     tts_config_id = search_space.tts_config_id
+
+    # Auto mode (ID 0) — use TTS Router
+    if tts_config_id == 0:
+        return {"is_auto_mode": True}
 
     # Global config (negative ID) — read from YAML
     if tts_config_id < 0:
         for cfg in config.GLOBAL_TTS_CONFIGS:
             if cfg.get("id") == tts_config_id:
-                # Global configs store model_name already as litellm model string
-                # (e.g., "local/kokoro", "openai/tts-1")
                 return {
                     "provider_string": cfg.get("model_name", ""),
                     "api_base": cfg.get("api_base") or None,
@@ -260,6 +305,10 @@ async def _generate_content_podcast(
                 }
             }
 
+            voice_profiles_map = await _load_voice_profiles_map(
+                session, speaker_profile
+            )
+
             initial_state = PodcasterState(
                 source_content=source_content,
                 db_session=session,
@@ -269,6 +318,7 @@ async def _generate_content_podcast(
                 language=language,
                 speaker_profile=speaker_profile,
                 search_space_tts_config=search_space_tts_config,
+                voice_profiles_map=voice_profiles_map,
             )
 
             graph_result = await podcaster_graph.ainvoke(

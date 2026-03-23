@@ -64,6 +64,7 @@ services:
     volumes:
       - ../surfsense_backend/app:/app/app
       - shared_temp:/shared_tmp
+      - voice-library:/shared_tmp/voice_library
     env_file:
       - ../surfsense_backend/.env
     environment:
@@ -107,6 +108,7 @@ services:
     volumes:
       - ../surfsense_backend/app:/app/app
       - shared_temp:/shared_tmp
+      - voice-library:/shared_tmp/voice_library
     env_file:
       - ../surfsense_backend/.env
     environment:
@@ -235,6 +237,9 @@ volumes:
     name: surfsense-dev-redis
   shared_temp:
     name: surfsense-dev-shared-temp
+  voice-library:
+    external: true
+    name: llm-server_voice-library
 
 networks:
   llm-net:

@@ -125,6 +125,26 @@ def create_generate_podcast_tool(
                     "message": "A podcast is already being generated. Please wait for it to complete.",
                 }
 
+            # Auto-select episode/speaker profiles if not provided
+            if not episode_profile_id:
+                from sqlalchemy import select
+
+                from app.db import PodcastEpisodeProfile
+
+                result = await db_session.execute(
+                    select(PodcastEpisodeProfile)
+                    .filter(
+                        PodcastEpisodeProfile.search_space_id == search_space_id
+                    )
+                    .order_by(PodcastEpisodeProfile.created_at.desc())
+                    .limit(1)
+                )
+                episode = result.scalars().first()
+                if episode:
+                    episode_profile_id = episode.id
+                    if episode.speaker_profile_id and not speaker_profile_id:
+                        speaker_profile_id = episode.speaker_profile_id
+
             podcast = Podcast(
                 title=podcast_title,
                 status=PodcastStatus.PENDING,

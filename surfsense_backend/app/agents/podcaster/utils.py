@@ -10,23 +10,41 @@ def resolve_speaker_voice(
     global_tts_api_base: Optional[str] = None,
     global_tts_api_key: Optional[str] = None,
     search_space_tts_config: Optional[dict[str, Any]] = None,
+    voice_profiles_map: Optional[dict[int, dict]] = None,
 ) -> dict[str, Any]:
     """
     Resolve TTS parameters for a specific speaker using 4-level fallback:
-      1. Speaker-level override
-      2. Profile-level default
-      3. Search Space TTSConfig (from DB)
-      4. Global env config
+      1. Voice profile from library (if voice_profile_id set)
+      2. Speaker-level override
+      3. Profile-level default
+      4. Search Space TTSConfig (from DB)
+      5. Global env config
 
-    Returns dict with keys: provider, voice, api_base, api_key
+    Returns dict with keys: provider, voice, api_base, api_key, instruct (optional)
     """
     ss_provider = search_space_tts_config.get("provider_string") if search_space_tts_config else None
 
     # Provider
     provider = speaker.tts_provider or profile.tts_provider or ss_provider or global_tts_service
 
-    # Voice ID always comes from the speaker
+    # Voice: resolve from voice profile library if available
     voice = speaker.voice_id
+    instruct = None
+
+    if speaker.voice_profile_id and voice_profiles_map:
+        vp = voice_profiles_map.get(speaker.voice_profile_id)
+        if vp:
+            vp_type = vp.get("voice_type")
+            if vp_type == "preset":
+                voice = vp.get("preset_voice_id") or voice
+                instruct = vp.get("style_instructions")
+            elif vp_type == "design":
+                voice = "voice_design"
+                instruct = vp.get("design_instructions")
+            elif vp_type == "clone":
+                clone_id = vp.get("clone_profile_id")
+                if clone_id:
+                    voice = f"clone:{clone_id}"
 
     # API base: speaker config → search space config → global
     api_base = None
@@ -46,12 +64,15 @@ def resolve_speaker_voice(
     elif global_tts_api_key:
         api_key = global_tts_api_key
 
-    return {
+    result = {
         "provider": provider,
         "voice": voice,
         "api_base": api_base,
         "api_key": api_key,
     }
+    if instruct:
+        result["instruct"] = instruct
+    return result
 
 
 def get_voice_for_provider(provider: str, speaker_id: int) -> dict | str:
@@ -65,14 +86,6 @@ def get_voice_for_provider(provider: str, speaker_id: int) -> dict | str:
     Returns:
         Voice configuration - string for OpenAI, dict for Vertex AI
     """
-    if provider == "local/kokoro":
-        # Kokoro voice mapping - https://huggingface.co/hexgrad/Kokoro-82M/tree/main/voices
-        kokoro_voices = {
-            0: "am_adam",  # Default/intro voice
-            1: "af_bella",  # First speaker
-        }
-        return kokoro_voices.get(speaker_id, "af_heart")
-
     # Extract provider type from the model string
     provider_type = (
         provider.split("/")[0].lower() if "/" in provider else provider.lower()

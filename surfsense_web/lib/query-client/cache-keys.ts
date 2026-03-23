@@ -49,6 +49,9 @@ export const cacheKeys = {
 		speakers: (searchSpaceId: number) => ["podcast-profiles", "speakers", searchSpaceId] as const,
 		episodes: (searchSpaceId: number) => ["podcast-profiles", "episodes", searchSpaceId] as const,
 	},
+	voiceProfiles: {
+		all: (searchSpaceId: number) => ["voice-profiles", searchSpaceId] as const,
+	},
 	auth: {
 		user: ["auth", "user"] as const,
 	},

@@ -86,6 +86,7 @@ class SpeakerSchema(BaseModel):
     tts_provider: Optional[str] = None
     tts_model: Optional[str] = None
     tts_config: Optional[dict[str, Any]] = None
+    voice_profile_id: Optional[int] = None
 
 
 # =============================================================================
