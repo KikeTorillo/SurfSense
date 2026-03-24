@@ -37,6 +37,7 @@ import { Thread } from "@/components/assistant-ui/thread";
 import { MobileReportPanel } from "@/components/report-panel/report-panel";
 import type { ThinkingStep } from "@/components/tool-ui/deepagent-thinking";
 import { DisplayImageToolUI } from "@/components/tool-ui/display-image";
+import { DisplayVideoToolUI } from "@/components/tool-ui/display-video";
 import { GeneratePodcastToolUI } from "@/components/tool-ui/generate-podcast";
 import { GenerateReportToolUI } from "@/components/tool-ui/generate-report";
 import {
@@ -149,6 +150,7 @@ const TOOLS_WITH_UI = new Set([
 	"generate_report",
 	"link_preview",
 	"display_image",
+	"display_video",
 	"delete_notion_page",
 	"scrape_webpage",
 	"create_notion_page",
@@ -1662,6 +1664,7 @@ export default function NewChatPage() {
 			<GenerateReportToolUI />
 			<LinkPreviewToolUI />
 			<DisplayImageToolUI />
+			<DisplayVideoToolUI />
 			<ScrapeWebpageToolUI />
 			<SaveMemoryToolUI />
 			<RecallMemoryToolUI />

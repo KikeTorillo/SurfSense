@@ -471,6 +471,48 @@ _TOOL_EXAMPLES["generate_image"] = """
   - Step 2: `display_image(src="<returned_url>", alt="Bean Dream coffee shop logo", title="Generated Image")`
 """
 
+_TOOL_INSTRUCTIONS["display_video"] = """
+- display_video: Display a video in the chat with metadata.
+  - Use this tool ONLY after calling generate_video to show the generated video.
+  - Args:
+    - src: The URL of the video (from generate_video result)
+    - alt: Alternative text describing the video
+    - title: Optional title
+    - description: Optional description
+  - Returns: A video player that renders a playable video in the chat.
+"""
+
+_TOOL_INSTRUCTIONS["generate_video"] = """
+- generate_video: Generate videos from text descriptions or images using AI video models.
+  - Use this when the user asks you to create, generate, or make a video, animation, or clip.
+  - Trigger phrases: "generate a video of", "create a video", "make a video", "animate this", "create an animation"
+  - Args:
+    - prompt: A detailed text description of the video to generate. Be specific about action, movement, style, and mood.
+    - mode: "t2v" for text-to-video (default), "i2v" for image-to-video
+    - image_url: URL of source image (only for i2v mode)
+  - Returns: A dictionary with the generated video URL in the "src" field.
+  - CRITICAL: After calling generate_video, you MUST call `display_video` with the returned "src" URL
+    to actually show the video in the chat. The generate_video tool only generates the video and returns
+    the URL — it does NOT display anything. You must always follow up with display_video.
+  - IMPORTANT: Write a detailed, descriptive prompt for best results. Include specific details about
+    movement, camera angle, lighting, and atmosphere.
+  - NOTE: Video generation takes about 1 minute. Inform the user this will take a moment.
+"""
+
+_TOOL_EXAMPLES["display_video"] = """
+- After generating a video, display it:
+  - `display_video(src="<returned_url>", alt="A cat playing with yarn", title="Generated Video")`
+"""
+
+_TOOL_EXAMPLES["generate_video"] = """
+- User: "Generate a video of waves crashing on a beach"
+  - Step 1: `generate_video(prompt="Cinematic slow-motion video of turquoise ocean waves crashing on a golden sand beach at sunset, foam spraying in the warm light, camera at low angle, peaceful and serene atmosphere")`
+  - Step 2: Use the returned "src" URL to display it: `display_video(src="<returned_url>", alt="Ocean waves on a beach at sunset", title="Generated Video")`
+- User: "Animate this image" (with an image URL in context)
+  - Step 1: `generate_video(prompt="Gentle animation bringing the scene to life with subtle movement and atmosphere", mode="i2v", image_url="<the_image_url>")`
+  - Step 2: `display_video(src="<returned_url>", alt="Animated scene", title="Generated Video")`
+"""
+
 # All tool names that have prompt instructions (order matters for prompt readability)
 _ALL_TOOL_NAMES_ORDERED = [
     "search_surfsense_docs",
@@ -480,6 +522,8 @@ _ALL_TOOL_NAMES_ORDERED = [
     "link_preview",
     "display_image",
     "generate_image",
+    "display_video",
+    "generate_video",
     "scrape_webpage",
     "save_memory",
     "recall_memory",

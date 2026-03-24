@@ -185,6 +185,9 @@ class LLMPreferencesRead(BaseModel):
     tts_config_id: int | None = Field(
         None, description="ID of the TTS config to use for podcast audio"
     )
+    video_generation_config_id: int | None = Field(
+        None, description="ID of the video generation config to use"
+    )
     agent_llm: dict[str, Any] | None = Field(
         None, description="Full config for agent LLM"
     )
@@ -215,4 +218,7 @@ class LLMPreferencesUpdate(BaseModel):
     )
     tts_config_id: int | None = Field(
         None, description="ID of the TTS config to use for podcast audio"
+    )
+    video_generation_config_id: int | None = Field(
+        None, description="ID of the video generation config to use"
     )

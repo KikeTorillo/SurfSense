@@ -102,6 +102,15 @@ from .tts_config import (
     TTSConfigRead,
     TTSConfigUpdate,
 )
+from .video_generation import (
+    GlobalVideoGenConfigRead,
+    VideoGenerationConfigCreate,
+    VideoGenerationConfigRead,
+    VideoGenerationConfigUpdate,
+    VideoGenerationCreate,
+    VideoGenerationListRead,
+    VideoGenerationRead,
+)
 from .search_source_connector import (
     MCPConnectorCreate,
     MCPConnectorRead,
@@ -247,6 +256,14 @@ __all__ = [
     "TTSConfigRead",
     "TTSConfigUpdate",
     "TimestampModel",
+    # Video Generation schemas
+    "GlobalVideoGenConfigRead",
+    "VideoGenerationConfigCreate",
+    "VideoGenerationConfigRead",
+    "VideoGenerationConfigUpdate",
+    "VideoGenerationCreate",
+    "VideoGenerationListRead",
+    "VideoGenerationRead",
     # User schemas
     "UserCreate",
     "UserRead",

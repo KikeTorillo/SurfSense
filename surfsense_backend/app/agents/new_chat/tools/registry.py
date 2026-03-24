@@ -46,7 +46,9 @@ from langchain_core.tools import BaseTool
 from app.db import ChatVisibility
 
 from .display_image import create_display_image_tool
+from .display_video import create_display_video_tool
 from .generate_image import create_generate_image_tool
+from .generate_video import create_generate_video_tool
 from .google_drive import (
     create_create_google_drive_file_tool,
     create_delete_google_drive_file_tool,
@@ -172,6 +174,23 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
         name="generate_image",
         description="Generate images from text descriptions using AI image models",
         factory=lambda deps: create_generate_image_tool(
+            search_space_id=deps["search_space_id"],
+            db_session=deps["db_session"],
+        ),
+        requires=["search_space_id", "db_session"],
+    ),
+    # Display video tool - shows videos in the chat
+    ToolDefinition(
+        name="display_video",
+        description="Display a video in the chat with metadata",
+        factory=lambda deps: create_display_video_tool(),
+        requires=[],
+    ),
+    # Generate video tool - creates videos using AI models (LTX-2.3, etc.)
+    ToolDefinition(
+        name="generate_video",
+        description="Generate videos from text descriptions or images using AI video models",
+        factory=lambda deps: create_generate_video_tool(
             search_space_id=deps["search_space_id"],
             db_session=deps["db_session"],
         ),

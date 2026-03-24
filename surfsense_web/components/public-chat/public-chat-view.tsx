@@ -4,6 +4,7 @@ import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { Navbar } from "@/components/homepage/navbar";
 import { ReportPanel } from "@/components/report-panel/report-panel";
 import { DisplayImageToolUI } from "@/components/tool-ui/display-image";
+import { DisplayVideoToolUI } from "@/components/tool-ui/display-video";
 import { GeneratePodcastToolUI } from "@/components/tool-ui/generate-podcast";
 import { GenerateReportToolUI } from "@/components/tool-ui/generate-report";
 import { LinkPreviewToolUI } from "@/components/tool-ui/link-preview";
@@ -47,6 +48,7 @@ export function PublicChatView({ shareToken }: PublicChatViewProps) {
 				<GenerateReportToolUI />
 				<LinkPreviewToolUI />
 				<DisplayImageToolUI />
+				<DisplayVideoToolUI />
 				<ScrapeWebpageToolUI />
 
 				<div className="flex h-screen pt-16 overflow-hidden">

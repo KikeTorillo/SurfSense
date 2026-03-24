@@ -296,6 +296,39 @@ global_tts_configs:
   #   api_base: ""
   #   litellm_params: {}
 
+# =============================================================================
+# Video Generation Configuration
+# =============================================================================
+# These configurations power video generation using direct HTTP calls to
+# OpenAI-compatible video generation APIs (e.g., local ComfyUI proxy).
+# Unlike LLM/Image/TTS, video generation does NOT use LiteLLM — it calls
+# the API directly via aiohttp because LiteLLM has no video support.
+#
+# No Auto mode / Router for video — configs are selected directly.
+
+global_video_generation_configs:
+  # LTX-Video 2.3 via local ComfyUI proxy (text-to-video and image-to-video)
+  - id: -1
+    name: "LTX-Video 2.3 (Local)"
+    description: "Local LTX-Video 2.3 22B via ComfyUI proxy — text-to-video and image-to-video"
+    provider: "OPENAI"
+    model_name: "ltx-2.3-t2v"
+    api_key: "local"
+    api_base: "http://comfyui-proxy:8080"
+    extra_params:
+      size: "768x512"
+      frames: 97
+
+  # Example: Cloud video generation provider
+  # - id: -2
+  #   name: "OpenAI Sora"
+  #   description: "OpenAI Sora video generation"
+  #   provider: "OPENAI"
+  #   model_name: "sora-1.0"
+  #   api_key: "sk-your-openai-api-key-here"
+  #   api_base: ""
+  #   extra_params: {}
+
 # Notes:
 # - ID 0 is reserved for "Auto" mode - uses LiteLLM Router for load balancing
 # - Use negative IDs to distinguish global configs from user configs (NewLLMConfig in DB)

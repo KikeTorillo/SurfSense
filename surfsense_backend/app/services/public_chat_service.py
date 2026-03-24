@@ -37,6 +37,7 @@ from app.utils.rbac import check_permission
 
 UI_TOOLS = {
     "display_image",
+    "display_video",
     "link_preview",
     "generate_podcast",
     "generate_report",

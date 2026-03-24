@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -6,6 +7,8 @@ import yaml
 from chonkie import AutoEmbeddings, CodeChunker, RecursiveChunker
 from dotenv import load_dotenv
 from rerankers import Reranker
+
+logger = logging.getLogger(__name__)
 
 # Get the base directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -24,132 +27,77 @@ def is_ffmpeg_installed():
     return shutil.which("ffmpeg") is not None
 
 
-def load_global_llm_configs():
-    """
-    Load global LLM configurations from YAML file.
-    Falls back to example file if main file doesn't exist.
+# ---------------------------------------------------------------------------
+# Cached YAML config reader — single read for all global config functions
+# ---------------------------------------------------------------------------
 
-    Returns:
-        list: List of global LLM config dictionaries, or empty list if file doesn't exist
-    """
-    # Try main config file first
-    global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
-
-    if not global_config_file.exists():
-        # No global configs available
-        return []
-
-    try:
-        with open(global_config_file, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-            return data.get("global_llm_configs", [])
-    except Exception as e:
-        print(f"Warning: Failed to load global LLM configs: {e}")
-        return []
+_cached_yaml_data: dict | None = None
 
 
-def load_router_settings():
-    """
-    Load router settings for Auto mode from YAML file.
-    Falls back to default settings if not found.
+def _load_yaml_config() -> dict:
+    """Read and cache the global config YAML. Returns empty dict if absent."""
+    global _cached_yaml_data
+    if _cached_yaml_data is not None:
+        return _cached_yaml_data
 
-    Returns:
-        dict: Router settings dictionary
-    """
-    # Default router settings
-    default_settings = {
-        "routing_strategy": "usage-based-routing",
-        "num_retries": 3,
-        "allowed_fails": 3,
-        "cooldown_time": 60,
-    }
-
-    # Try main config file first
-    global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
-
-    if not global_config_file.exists():
-        return default_settings
+    config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
+    if not config_file.exists():
+        _cached_yaml_data = {}
+        return _cached_yaml_data
 
     try:
-        with open(global_config_file, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-            settings = data.get("router_settings", {})
-            # Merge with defaults
-            return {**default_settings, **settings}
-    except Exception as e:
-        print(f"Warning: Failed to load router settings: {e}")
-        return default_settings
+        with open(config_file, encoding="utf-8") as f:
+            _cached_yaml_data = yaml.safe_load(f) or {}
+    except Exception:
+        logger.warning("Failed to load global config YAML", exc_info=True)
+        _cached_yaml_data = {}
+
+    return _cached_yaml_data
 
 
-def load_global_image_gen_configs():
-    """
-    Load global image generation configurations from YAML file.
+_DEFAULT_ROUTER_SETTINGS = {
+    "routing_strategy": "usage-based-routing",
+    "num_retries": 3,
+    "allowed_fails": 3,
+    "cooldown_time": 60,
+}
 
-    Returns:
-        list: List of global image generation config dictionaries, or empty list
-    """
-    global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
-
-    if not global_config_file.exists():
-        return []
-
-    try:
-        with open(global_config_file, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-            return data.get("global_image_generation_configs", [])
-    except Exception as e:
-        print(f"Warning: Failed to load global image generation configs: {e}")
-        return []
+_DEFAULT_TTS_ROUTER_SETTINGS = {
+    "routing_strategy": "usage-based-routing",
+    "num_retries": 2,
+    "allowed_fails": 3,
+    "cooldown_time": 60,
+}
 
 
-def load_global_tts_configs():
-    """
-    Load global TTS configurations from YAML file.
-
-    Returns:
-        list: List of global TTS config dictionaries, or empty list
-    """
-    global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
-
-    if not global_config_file.exists():
-        return []
-
-    try:
-        with open(global_config_file, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-            return data.get("global_tts_configs", [])
-    except Exception as e:
-        print(f"Warning: Failed to load global TTS configs: {e}")
-        return []
+def load_global_llm_configs() -> list:
+    """Load global LLM configurations from cached YAML."""
+    return _load_yaml_config().get("global_llm_configs", [])
 
 
-def load_image_gen_router_settings():
-    """
-    Load router settings for image generation Auto mode from YAML file.
+def load_router_settings() -> dict:
+    """Load LLM router settings, merged with defaults."""
+    return {**_DEFAULT_ROUTER_SETTINGS, **_load_yaml_config().get("router_settings", {})}
 
-    Returns:
-        dict: Router settings dictionary
-    """
-    default_settings = {
-        "routing_strategy": "usage-based-routing",
-        "num_retries": 3,
-        "allowed_fails": 3,
-        "cooldown_time": 60,
-    }
 
-    global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
+def load_global_image_gen_configs() -> list:
+    """Load global image generation configurations from cached YAML."""
+    return _load_yaml_config().get("global_image_generation_configs", [])
 
-    if not global_config_file.exists():
-        return default_settings
 
-    try:
-        with open(global_config_file, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-            settings = data.get("image_generation_router_settings", {})
-            return {**default_settings, **settings}
-    except Exception as e:
-        print(f"Warning: Failed to load image generation router settings: {e}")
-        return default_settings
+def load_global_tts_configs() -> list:
+    """Load global TTS configurations from cached YAML."""
+    return _load_yaml_config().get("global_tts_configs", [])
+
+
+def load_global_video_gen_configs() -> list:
+    """Load global video generation configurations from cached YAML."""
+    return _load_yaml_config().get("global_video_generation_configs", [])
+
+
+def load_image_gen_router_settings() -> dict:
+    """Load image generation router settings, merged with defaults."""
+    return {**_DEFAULT_ROUTER_SETTINGS, **_load_yaml_config().get("image_generation_router_settings", {})}
 
 
 def initialize_llm_router():
@@ -161,48 +109,25 @@ def initialize_llm_router():
     router_settings = load_router_settings()
 
     if not global_configs:
-        print("Info: No global LLM configs found, Auto mode will not be available")
+        logger.info("No global LLM configs found, Auto mode will not be available")
         return
 
     try:
         from app.services.llm_router_service import LLMRouterService
 
         LLMRouterService.initialize(global_configs, router_settings)
-        print(
-            f"Info: LLM Router initialized with {len(global_configs)} models "
-            f"(strategy: {router_settings.get('routing_strategy', 'usage-based-routing')})"
+        logger.info(
+            "LLM Router initialized with %d models (strategy: %s)",
+            len(global_configs),
+            router_settings.get("routing_strategy", "usage-based-routing"),
         )
-    except Exception as e:
-        print(f"Warning: Failed to initialize LLM Router: {e}")
+    except Exception:
+        logger.warning("Failed to initialize LLM Router", exc_info=True)
 
 
-def load_tts_router_settings():
-    """
-    Load router settings for TTS Auto mode from YAML file.
-
-    Returns:
-        dict: Router settings dictionary
-    """
-    default_settings = {
-        "routing_strategy": "usage-based-routing",
-        "num_retries": 2,
-        "allowed_fails": 3,
-        "cooldown_time": 60,
-    }
-
-    global_config_file = BASE_DIR / "app" / "config" / "global_llm_config.yaml"
-
-    if not global_config_file.exists():
-        return default_settings
-
-    try:
-        with open(global_config_file, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-            settings = data.get("tts_router_settings", {})
-            return {**default_settings, **settings}
-    except Exception as e:
-        print(f"Warning: Failed to load TTS router settings: {e}")
-        return default_settings
+def load_tts_router_settings() -> dict:
+    """Load TTS router settings, merged with defaults."""
+    return {**_DEFAULT_TTS_ROUTER_SETTINGS, **_load_yaml_config().get("tts_router_settings", {})}
 
 
 def initialize_image_gen_router():
@@ -214,8 +139,8 @@ def initialize_image_gen_router():
     router_settings = load_image_gen_router_settings()
 
     if not image_gen_configs:
-        print(
-            "Info: No global image generation configs found, "
+        logger.info(
+            "No global image generation configs found, "
             "Image Generation Auto mode will not be available"
         )
         return
@@ -224,12 +149,13 @@ def initialize_image_gen_router():
         from app.services.image_gen_router_service import ImageGenRouterService
 
         ImageGenRouterService.initialize(image_gen_configs, router_settings)
-        print(
-            f"Info: Image Generation Router initialized with {len(image_gen_configs)} models "
-            f"(strategy: {router_settings.get('routing_strategy', 'usage-based-routing')})"
+        logger.info(
+            "Image Generation Router initialized with %d models (strategy: %s)",
+            len(image_gen_configs),
+            router_settings.get("routing_strategy", "usage-based-routing"),
         )
-    except Exception as e:
-        print(f"Warning: Failed to initialize Image Generation Router: {e}")
+    except Exception:
+        logger.warning("Failed to initialize Image Generation Router", exc_info=True)
 
 
 def initialize_tts_router():
@@ -241,19 +167,20 @@ def initialize_tts_router():
     router_settings = load_tts_router_settings()
 
     if not tts_configs:
-        print("Info: No global TTS configs found, TTS Auto mode will not be available")
+        logger.info("No global TTS configs found, TTS Auto mode will not be available")
         return
 
     try:
         from app.services.tts_router_service import TTSRouterService
 
         TTSRouterService.initialize(tts_configs, router_settings)
-        print(
-            f"Info: TTS Router initialized with {len(tts_configs)} models "
-            f"(strategy: {router_settings.get('routing_strategy', 'usage-based-routing')})"
+        logger.info(
+            "TTS Router initialized with %d models (strategy: %s)",
+            len(tts_configs),
+            router_settings.get("routing_strategy", "usage-based-routing"),
         )
-    except Exception as e:
-        print(f"Warning: Failed to initialize TTS Router: {e}")
+    except Exception:
+        logger.warning("Failed to initialize TTS Router", exc_info=True)
 
 
 class Config:
@@ -390,6 +317,9 @@ class Config:
 
     # Router settings for TTS Auto mode
     TTS_ROUTER_SETTINGS = load_tts_router_settings()
+
+    # Global Video Generation Configurations (optional)
+    GLOBAL_VIDEO_GEN_CONFIGS = load_global_video_gen_configs()
 
     # Chonkie Configuration | Edit this to your needs
     EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")

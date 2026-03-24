@@ -323,6 +323,89 @@ export const globalTTSConfig = z.object({
 export const getGlobalTTSConfigsResponse = z.array(globalTTSConfig);
 
 // =============================================================================
+// Video Generation Config (separate table — direct HTTP, no LiteLLM)
+// =============================================================================
+
+/**
+ * VideoGenProvider enum - providers for video generation
+ */
+export const videoGenProviderEnum = z.enum(["OPENAI"]);
+
+export type VideoGenProvider = z.infer<typeof videoGenProviderEnum>;
+
+/**
+ * VideoGenerationConfig - user-created video gen model configs
+ */
+export const videoGenerationConfig = z.object({
+	id: z.number(),
+	name: z.string().max(100),
+	description: z.string().max(500).nullable().optional(),
+	provider: videoGenProviderEnum,
+	custom_provider: z.string().max(100).nullable().optional(),
+	model_name: z.string().max(100),
+	api_key: z.string(),
+	api_base: z.string().max(500).nullable().optional(),
+	extra_params: z.record(z.string(), z.any()).nullable().optional(),
+	created_at: z.string(),
+	search_space_id: z.number(),
+	user_id: z.string(),
+});
+
+export type VideoGenerationConfig = z.infer<typeof videoGenerationConfig>;
+
+export const createVideoGenConfigRequest = z.object({
+	name: z.string().min(1).max(100),
+	description: z.string().max(500).nullable().optional(),
+	provider: videoGenProviderEnum,
+	custom_provider: z.string().max(100).nullable().optional(),
+	model_name: z.string().min(1).max(100),
+	api_key: z.string().min(1),
+	api_base: z.string().max(500).nullable().optional(),
+	extra_params: z.record(z.string(), z.any()).nullable().optional(),
+	search_space_id: z.number(),
+});
+
+export const createVideoGenConfigResponse = videoGenerationConfig;
+
+export const getVideoGenConfigsResponse = z.array(videoGenerationConfig);
+
+export const updateVideoGenConfigRequest = z.object({
+	id: z.number(),
+	name: z.string().min(1).max(100).optional(),
+	description: z.string().max(500).nullable().optional(),
+	provider: videoGenProviderEnum.optional(),
+	custom_provider: z.string().max(100).nullable().optional(),
+	model_name: z.string().min(1).max(100).optional(),
+	api_key: z.string().min(1).optional(),
+	api_base: z.string().max(500).nullable().optional(),
+	extra_params: z.record(z.string(), z.any()).nullable().optional(),
+});
+
+export const updateVideoGenConfigResponse = videoGenerationConfig;
+
+export const deleteVideoGenConfigResponse = z.object({
+	message: z.string(),
+	id: z.number(),
+});
+
+/**
+ * Global video gen config from YAML (no api_key exposed)
+ */
+export const globalVideoGenConfig = z.object({
+	id: z.number(),
+	name: z.string(),
+	description: z.string().nullable().optional(),
+	provider: z.string(),
+	custom_provider: z.string().nullable().optional(),
+	model_name: z.string(),
+	api_base: z.string().nullable().optional(),
+	extra_params: z.record(z.string(), z.any()).nullable().optional(),
+	is_global: z.literal(true),
+});
+
+export const getGlobalVideoGenConfigsResponse = z.array(globalVideoGenConfig);
+
+// =============================================================================
 // LLM Preferences (Role Assignments)
 // =============================================================================
 
@@ -336,6 +419,7 @@ export const llmPreferences = z.object({
 	document_summary_llm_id: z.union([z.number(), z.null()]).optional(),
 	image_generation_config_id: z.union([z.number(), z.null()]).optional(),
 	tts_config_id: z.union([z.number(), z.null()]).optional(),
+	video_generation_config_id: z.union([z.number(), z.null()]).optional(),
 	agent_llm: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
 	document_summary_llm: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
 	image_generation_config: z.union([z.record(z.string(), z.unknown()), z.null()]).optional(),
@@ -361,6 +445,7 @@ export const updateLLMPreferencesRequest = z.object({
 		document_summary_llm_id: true,
 		image_generation_config_id: true,
 		tts_config_id: true,
+		video_generation_config_id: true,
 	}),
 });
 
@@ -426,3 +511,11 @@ export type GetLLMPreferencesRequest = z.infer<typeof getLLMPreferencesRequest>;
 export type GetLLMPreferencesResponse = z.infer<typeof getLLMPreferencesResponse>;
 export type UpdateLLMPreferencesRequest = z.infer<typeof updateLLMPreferencesRequest>;
 export type UpdateLLMPreferencesResponse = z.infer<typeof updateLLMPreferencesResponse>;
+export type CreateVideoGenConfigRequest = z.infer<typeof createVideoGenConfigRequest>;
+export type CreateVideoGenConfigResponse = z.infer<typeof createVideoGenConfigResponse>;
+export type GetVideoGenConfigsResponse = z.infer<typeof getVideoGenConfigsResponse>;
+export type UpdateVideoGenConfigRequest = z.infer<typeof updateVideoGenConfigRequest>;
+export type UpdateVideoGenConfigResponse = z.infer<typeof updateVideoGenConfigResponse>;
+export type DeleteVideoGenConfigResponse = z.infer<typeof deleteVideoGenConfigResponse>;
+export type GlobalVideoGenConfig = z.infer<typeof globalVideoGenConfig>;
+export type GetGlobalVideoGenConfigsResponse = z.infer<typeof getGlobalVideoGenConfigsResponse>;

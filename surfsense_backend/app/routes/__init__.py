@@ -44,6 +44,7 @@ from .slack_add_connector_route import router as slack_add_connector_router
 from .surfsense_docs_routes import router as surfsense_docs_router
 from .teams_add_connector_route import router as teams_add_connector_router
 from .tts_config_routes import router as tts_config_router
+from .video_generation_routes import router as video_generation_router
 from .voice_profiles_routes import router as voice_profiles_router
 from .youtube_routes import router as youtube_router
 
@@ -62,6 +63,7 @@ router.include_router(podcast_profiles_router)  # Speaker & episode profile CRUD
 router.include_router(reports_router)  # Report CRUD and multi-format export
 router.include_router(image_generation_router)  # Image generation via litellm
 router.include_router(tts_config_router)  # TTS config CRUD for podcast audio
+router.include_router(video_generation_router)  # Video generation via ComfyUI proxy
 router.include_router(voice_profiles_router)  # Voice library: preset, design, clone profiles
 router.include_router(search_source_connectors_router)
 router.include_router(google_calendar_add_connector_router)

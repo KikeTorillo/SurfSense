@@ -1,12 +1,13 @@
 "use client";
 
-import { Bot, Brain, FileText, Globe, ImageIcon, MessageSquare, Mic, Shield } from "lucide-react";
+import { Bot, Brain, FileText, Globe, ImageIcon, MessageSquare, Mic, Shield, Video } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect } from "react";
 import { PublicChatSnapshotsManager } from "@/components/public-chat-snapshots/public-chat-snapshots-manager";
 import { GeneralSettingsManager } from "@/components/settings/general-settings-manager";
 import { ImageModelManager } from "@/components/settings/image-model-manager";
+import { VideoModelManager } from "@/components/settings/video-model-manager";
 import { PodcastProfileManager } from "@/components/settings/podcast-profile-manager";
 import { LLMRoleManager } from "@/components/settings/llm-role-manager";
 import { ModelConfigManager } from "@/components/settings/model-config-manager";
@@ -20,6 +21,7 @@ const VALID_TABS = [
 	"models",
 	"roles",
 	"image-models",
+	"video-models",
 	"podcasts",
 	"prompts",
 	"public-links",
@@ -74,6 +76,10 @@ export default function SettingsPage() {
 							<ImageIcon className="mr-2 h-4 w-4" />
 							{t("nav_image_models")}
 						</TabsTrigger>
+						<TabsTrigger value="video-models">
+							<Video className="mr-2 h-4 w-4" />
+							{t("nav_video_models")}
+						</TabsTrigger>
 						<TabsTrigger value="podcasts">
 							<Mic className="mr-2 h-4 w-4" />
 							{t("nav_podcasts")}
@@ -102,6 +108,9 @@ export default function SettingsPage() {
 					</TabsContent>
 					<TabsContent value="image-models" className="mt-6">
 						<ImageModelManager searchSpaceId={searchSpaceId} />
+					</TabsContent>
+					<TabsContent value="video-models" className="mt-6">
+						<VideoModelManager searchSpaceId={searchSpaceId} />
 					</TabsContent>
 					<TabsContent value="podcasts" className="mt-6">
 						<PodcastProfileManager searchSpaceId={searchSpaceId} />

@@ -242,6 +242,15 @@ class ImageGenProvider(StrEnum):
     NSCALE = "NSCALE"
 
 
+class VideoGenProvider(StrEnum):
+    """
+    Enum for video generation providers.
+    Currently only OpenAI-compatible APIs (local ComfyUI proxy, future Sora).
+    """
+
+    OPENAI = "OPENAI"
+
+
 class TTSProvider(StrEnum):
     """
     Enum for TTS providers supported by LiteLLM speech API.
@@ -359,11 +368,19 @@ class Permission(StrEnum):
     # Image Generations
     IMAGE_GENERATIONS_CREATE = "image_generations:create"
     IMAGE_GENERATIONS_READ = "image_generations:read"
+    IMAGE_GENERATIONS_UPDATE = "image_generations:update"
     IMAGE_GENERATIONS_DELETE = "image_generations:delete"
+
+    # Video Generations
+    VIDEO_GENERATIONS_CREATE = "video_generations:create"
+    VIDEO_GENERATIONS_READ = "video_generations:read"
+    VIDEO_GENERATIONS_UPDATE = "video_generations:update"
+    VIDEO_GENERATIONS_DELETE = "video_generations:delete"
 
     # TTS Configs
     TTS_CONFIGS_CREATE = "tts_configs:create"
     TTS_CONFIGS_READ = "tts_configs:read"
+    TTS_CONFIGS_UPDATE = "tts_configs:update"
     TTS_CONFIGS_DELETE = "tts_configs:delete"
 
     # Connectors
@@ -427,12 +444,18 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.PODCASTS_CREATE.value,
         Permission.PODCASTS_READ.value,
         Permission.PODCASTS_UPDATE.value,
-        # Image Generations (create and read, no delete)
+        # Image Generations (create, read, update, no delete)
         Permission.IMAGE_GENERATIONS_CREATE.value,
         Permission.IMAGE_GENERATIONS_READ.value,
-        # TTS Configs (create and read, no delete)
+        Permission.IMAGE_GENERATIONS_UPDATE.value,
+        # Video Generations (create, read, update, no delete)
+        Permission.VIDEO_GENERATIONS_CREATE.value,
+        Permission.VIDEO_GENERATIONS_READ.value,
+        Permission.VIDEO_GENERATIONS_UPDATE.value,
+        # TTS Configs (create, read, update, no delete)
         Permission.TTS_CONFIGS_CREATE.value,
         Permission.TTS_CONFIGS_READ.value,
+        Permission.TTS_CONFIGS_UPDATE.value,
         # Connectors (no delete)
         Permission.CONNECTORS_CREATE.value,
         Permission.CONNECTORS_READ.value,
@@ -464,6 +487,8 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.PODCASTS_READ.value,
         # Image Generations (read only)
         Permission.IMAGE_GENERATIONS_READ.value,
+        # Video Generations (read only)
+        Permission.VIDEO_GENERATIONS_READ.value,
         # TTS Configs (read only)
         Permission.TTS_CONFIGS_READ.value,
         # Connectors (read only)
@@ -1360,6 +1385,93 @@ class ImageGeneration(BaseModel, TimestampMixin):
     created_by = relationship("User", back_populates="image_generations")
 
 
+class VideoGenerationConfig(BaseModel, TimestampMixin):
+    """
+    Dedicated configuration table for video generation models.
+
+    Separate from ImageGenerationConfig because video generation uses direct
+    HTTP calls (not LiteLLM) and has different parameters (extra_params instead
+    of litellm_params).
+    """
+
+    __tablename__ = "video_generation_configs"
+
+    name = Column(String(100), nullable=False, index=True)
+    description = Column(String(500), nullable=True)
+
+    # Provider & model (uses VideoGenProvider)
+    provider = Column(SQLAlchemyEnum(VideoGenProvider), nullable=False)
+    custom_provider = Column(String(100), nullable=True)
+    model_name = Column(String(100), nullable=False)
+
+    # Credentials
+    api_key = Column(String, nullable=False)
+    api_base = Column(String(500), nullable=True)
+
+    # Additional parameters (size, frames, etc.)
+    extra_params = Column(JSON, nullable=True, default={})
+
+    # Relationships
+    search_space_id = Column(
+        Integer, ForeignKey("searchspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    search_space = relationship(
+        "SearchSpace", back_populates="video_generation_configs"
+    )
+
+    # User who created this config
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    user = relationship("User", back_populates="video_generation_configs")
+
+
+class VideoGeneration(BaseModel, TimestampMixin):
+    """
+    Stores video generation requests and results.
+
+    Unlike ImageGeneration which stores response_data as JSONB (b64_json),
+    video files are saved to disk and only the file path is stored in DB.
+    A row with video_path means success; a row with error_message means failure.
+    """
+
+    __tablename__ = "video_generations"
+
+    # Request parameters
+    prompt = Column(Text, nullable=False)
+    model = Column(String(200), nullable=True)  # e.g., "ltx-2.3-t2v"
+    mode = Column(String(10), nullable=True, default="t2v")  # "t2v" or "i2v"
+    size = Column(String(50), nullable=True)  # "768x512", etc.
+    frames = Column(Integer, nullable=True)  # Number of frames requested
+
+    # Video generation config reference
+    # Negative IDs = global configs from YAML, positive IDs = DB configs
+    video_generation_config_id = Column(Integer, nullable=True)
+
+    # Result: path to .mp4 file on disk — present on success
+    video_path = Column(String(500), nullable=True)
+    # Error message — present on failure
+    error_message = Column(Text, nullable=True)
+
+    # Signed access token for serving videos via <video> tags
+    access_token = Column(String(64), nullable=True, index=True)
+
+    # Foreign keys
+    search_space_id = Column(
+        Integer, ForeignKey("searchspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Relationships
+    search_space = relationship("SearchSpace", back_populates="video_generations")
+    created_by = relationship("User", back_populates="video_generations")
+
+
 class SearchSpace(BaseModel, TimestampMixin):
     __tablename__ = "searchspaces"
 
@@ -1390,6 +1502,9 @@ class SearchSpace(BaseModel, TimestampMixin):
     tts_config_id = Column(
         Integer, nullable=True, default=0
     )  # For TTS/podcast audio generation, defaults to Auto mode
+    video_generation_config_id = Column(
+        Integer, nullable=True
+    )  # For video generation (no Auto mode — direct API calls)
 
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
@@ -1475,6 +1590,18 @@ class SearchSpace(BaseModel, TimestampMixin):
         "TTSConfig",
         back_populates="search_space",
         order_by="TTSConfig.id",
+        cascade="all, delete-orphan",
+    )
+    video_generation_configs = relationship(
+        "VideoGenerationConfig",
+        back_populates="search_space",
+        order_by="VideoGenerationConfig.id",
+        cascade="all, delete-orphan",
+    )
+    video_generations = relationship(
+        "VideoGeneration",
+        back_populates="search_space",
+        order_by="VideoGeneration.id.desc()",
         cascade="all, delete-orphan",
     )
 
@@ -1932,6 +2059,20 @@ if config.AUTH_TYPE == "GOOGLE":
             passive_deletes=True,
         )
 
+        # Video generation configs created by this user
+        video_generation_configs = relationship(
+            "VideoGenerationConfig",
+            back_populates="user",
+            passive_deletes=True,
+        )
+
+        # Video generations created by this user
+        video_generations = relationship(
+            "VideoGeneration",
+            back_populates="created_by",
+            passive_deletes=True,
+        )
+
         # User memories for personalized AI responses
         memories = relationship(
             "UserMemory",
@@ -2038,6 +2179,20 @@ else:
         tts_configs = relationship(
             "TTSConfig",
             back_populates="user",
+            passive_deletes=True,
+        )
+
+        # Video generation configs created by this user
+        video_generation_configs = relationship(
+            "VideoGenerationConfig",
+            back_populates="user",
+            passive_deletes=True,
+        )
+
+        # Video generations created by this user
+        video_generations = relationship(
+            "VideoGeneration",
+            back_populates="created_by",
             passive_deletes=True,
         )
 

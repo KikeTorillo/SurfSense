@@ -277,6 +277,7 @@ async def _stream_agent_events(
 
     async for event in agent.astream_events(input_data, config=config, version="v2"):
         event_type = event.get("event", "")
+        _evt_name = event.get("name", "")
 
         if event_type == "on_chat_model_stream":
             if active_tool_depth > 0:
@@ -367,6 +368,25 @@ async def _stream_agent_events(
                 yield streaming_service.format_thinking_step(
                     step_id=tool_step_id,
                     title="Analyzing the image",
+                    status="in_progress",
+                    items=last_active_step_items,
+                )
+            elif tool_name == "display_video":
+                src = (
+                    tool_input.get("src", "")
+                    if isinstance(tool_input, dict)
+                    else str(tool_input)
+                )
+                title = (
+                    tool_input.get("title", "") if isinstance(tool_input, dict) else ""
+                )
+                last_active_step_title = "Preparing video"
+                last_active_step_items = [
+                    f"Loading: {title[:50] if title else 'video'}{'...' if len(title or '') > 50 else ''}"
+                ]
+                yield streaming_service.format_thinking_step(
+                    step_id=tool_step_id,
+                    title="Preparing video",
                     status="in_progress",
                     items=last_active_step_items,
                 )
@@ -545,6 +565,23 @@ async def _stream_agent_events(
                 yield streaming_service.format_thinking_step(
                     step_id=original_step_id,
                     title="Analyzing the image",
+                    status="completed",
+                    items=completed_items,
+                )
+            elif tool_name == "display_video":
+                if isinstance(tool_output, dict):
+                    title = tool_output.get("title", "")
+                    alt = tool_output.get("alt", "Video")
+                    display_name = title or alt
+                    completed_items = [
+                        *last_active_step_items,
+                        f"Ready: {display_name[:50]}{'...' if len(display_name) > 50 else ''}",
+                    ]
+                else:
+                    completed_items = [*last_active_step_items, "Video ready"]
+                yield streaming_service.format_thinking_step(
+                    step_id=original_step_id,
+                    title="Preparing video",
                     status="completed",
                     items=completed_items,
                 )
@@ -790,6 +827,19 @@ async def _stream_agent_events(
                     title = tool_output.get("title") or tool_output.get("alt", "Image")
                     yield streaming_service.format_terminal_info(
                         f"Image analyzed: {title[:40]}{'...' if len(title) > 40 else ''}",
+                        "success",
+                    )
+            elif tool_name == "display_video":
+                yield streaming_service.format_tool_output_available(
+                    tool_call_id,
+                    tool_output
+                    if isinstance(tool_output, dict)
+                    else {"result": tool_output},
+                )
+                if isinstance(tool_output, dict):
+                    title = tool_output.get("title") or tool_output.get("alt", "Video")
+                    yield streaming_service.format_terminal_info(
+                        f"Video ready: {title[:40]}{'...' if len(title) > 40 else ''}",
                         "success",
                     )
             elif tool_name == "scrape_webpage":

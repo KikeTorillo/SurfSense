@@ -13,6 +13,7 @@ import {
 	RotateCcw,
 	Save,
 	Shuffle,
+	Video,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
@@ -22,6 +23,10 @@ import {
 	globalImageGenConfigsAtom,
 	imageGenConfigsAtom,
 } from "@/atoms/image-gen-config/image-gen-config-query.atoms";
+import {
+	globalVideoGenConfigsAtom,
+	videoGenConfigsAtom,
+} from "@/atoms/video-gen-config/video-gen-config-query.atoms";
 import { updateLLMPreferencesMutationAtom } from "@/atoms/new-llm-config/new-llm-config-mutation.atoms";
 import {
 	globalNewLLMConfigsAtom,
@@ -76,6 +81,13 @@ const ROLE_DESCRIPTIONS = {
 		prefKey: "tts_config_id" as const,
 		configType: "tts" as const,
 	},
+	video_generation: {
+		icon: Video,
+		color: "text-indigo-600 dark:text-indigo-400",
+		bgColor: "bg-indigo-500/10",
+		prefKey: "video_generation_config_id" as const,
+		configType: "video" as const,
+	},
 };
 
 interface LLMRoleManagerProps {
@@ -122,6 +134,18 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 		error: globalTTSConfigsError,
 	} = useAtomValue(globalTTSConfigsAtom);
 
+	// Video gen configs
+	const {
+		data: userVideoConfigs = [],
+		isFetching: videoConfigsLoading,
+		error: videoConfigsError,
+	} = useAtomValue(videoGenConfigsAtom);
+	const {
+		data: globalVideoConfigs = [],
+		isFetching: globalVideoConfigsLoading,
+		error: globalVideoConfigsError,
+	} = useAtomValue(globalVideoGenConfigsAtom);
+
 	// Preferences
 	const {
 		data: preferences = {},
@@ -136,6 +160,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 		document_summary_llm_id: preferences.document_summary_llm_id ?? "",
 		image_generation_config_id: preferences.image_generation_config_id ?? "",
 		tts_config_id: preferences.tts_config_id ?? "",
+		video_generation_config_id: preferences.video_generation_config_id ?? "",
 	});
 
 	const [hasChanges, setHasChanges] = useState(false);
@@ -147,6 +172,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 			document_summary_llm_id: preferences.document_summary_llm_id ?? "",
 			image_generation_config_id: preferences.image_generation_config_id ?? "",
 			tts_config_id: preferences.tts_config_id ?? "",
+			video_generation_config_id: preferences.video_generation_config_id ?? "",
 		};
 		setAssignments(newAssignments);
 		setHasChanges(false);
@@ -165,6 +191,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 			document_summary_llm_id: preferences.document_summary_llm_id ?? "",
 			image_generation_config_id: preferences.image_generation_config_id ?? "",
 			tts_config_id: preferences.tts_config_id ?? "",
+			video_generation_config_id: preferences.video_generation_config_id ?? "",
 		};
 
 		const hasChangesNow = Object.keys(newAssignments).some(
@@ -187,6 +214,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 			document_summary_llm_id: toNumericOrUndefined(assignments.document_summary_llm_id),
 			image_generation_config_id: toNumericOrUndefined(assignments.image_generation_config_id),
 			tts_config_id: toNumericOrUndefined(assignments.tts_config_id),
+			video_generation_config_id: toNumericOrUndefined(assignments.video_generation_config_id),
 		};
 
 		await updatePreferences({
@@ -206,6 +234,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 			document_summary_llm_id: preferences.document_summary_llm_id ?? "",
 			image_generation_config_id: preferences.image_generation_config_id ?? "",
 			tts_config_id: preferences.tts_config_id ?? "",
+			video_generation_config_id: preferences.video_generation_config_id ?? "",
 		});
 		setHasChanges(false);
 	};
@@ -239,6 +268,12 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 		...(userTTSConfigs ?? []).filter((config) => config.id && config.id.toString().trim() !== ""),
 	];
 
+	// Combine global and custom video gen configs
+	const allVideoConfigs = [
+		...globalVideoConfigs.map((config) => ({ ...config, is_global: true })),
+		...(userVideoConfigs ?? []).filter((config) => config.id && config.id.toString().trim() !== ""),
+	];
+
 	const isLoading =
 		configsLoading ||
 		preferencesLoading ||
@@ -246,7 +281,9 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 		imageConfigsLoading ||
 		globalImageConfigsLoading ||
 		ttsConfigsLoading ||
-		globalTTSConfigsLoading;
+		globalTTSConfigsLoading ||
+		videoConfigsLoading ||
+		globalVideoConfigsLoading;
 	const hasError =
 		configsError ||
 		preferencesError ||
@@ -254,9 +291,11 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 		imageConfigsError ||
 		globalImageConfigsError ||
 		ttsConfigsError ||
-		globalTTSConfigsError;
+		globalTTSConfigsError ||
+		videoConfigsError ||
+		globalVideoConfigsError;
 	const hasAnyConfigs =
-		allLLMConfigs.length > 0 || allImageConfigs.length > 0 || allTTSConfigs.length > 0;
+		allLLMConfigs.length > 0 || allImageConfigs.length > 0 || allTTSConfigs.length > 0 || allVideoConfigs.length > 0;
 
 	return (
 		<div className="space-y-5 md:space-y-6">
@@ -307,7 +346,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 			{/* Loading Skeleton */}
 			{isLoading && (
 				<div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-					{["skeleton-a", "skeleton-b", "skeleton-c", "skeleton-d"].map((key) => (
+					{["skeleton-a", "skeleton-b", "skeleton-c", "skeleton-d", "skeleton-e"].map((key) => (
 						<Card key={key} className="border-border/60">
 							<CardContent className="p-4 md:p-5 space-y-4">
 								{/* Header: icon + title + status */}
@@ -365,6 +404,7 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 						const IconComponent = role.icon;
 						const isTTSRole = role.configType === "tts";
 						const isImageRole = role.configType === "image";
+						const isVideoRole = role.configType === "video";
 						const currentAssignment = assignments[role.prefKey as keyof typeof assignments];
 
 						// Pick the right config lists based on role type
@@ -372,17 +412,23 @@ export function LLMRoleManager({ searchSpaceId }: LLMRoleManagerProps) {
 							? globalTTSConfigs
 							: isImageRole
 								? globalImageConfigs
-								: globalConfigs;
+								: isVideoRole
+									? globalVideoConfigs
+									: globalConfigs;
 						const roleUserConfigs = isTTSRole
 							? (userTTSConfigs ?? []).filter((c) => c.id && c.id.toString().trim() !== "")
 							: isImageRole
 								? (userImageConfigs ?? []).filter((c) => c.id && c.id.toString().trim() !== "")
-								: newLLMConfigs.filter((c) => c.id && c.id.toString().trim() !== "");
+								: isVideoRole
+									? (userVideoConfigs ?? []).filter((c) => c.id && c.id.toString().trim() !== "")
+									: newLLMConfigs.filter((c) => c.id && c.id.toString().trim() !== "");
 						const roleAllConfigs = isTTSRole
 							? allTTSConfigs
 							: isImageRole
 								? allImageConfigs
-								: allLLMConfigs;
+								: isVideoRole
+									? allVideoConfigs
+									: allLLMConfigs;
 
 						const assignedConfig = roleAllConfigs.find((config) => config.id === currentAssignment);
 						const isAssigned =
