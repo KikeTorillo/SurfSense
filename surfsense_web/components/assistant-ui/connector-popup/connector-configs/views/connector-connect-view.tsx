@@ -14,6 +14,7 @@ const FORM_ID_MAP: Record<string, string> = {
 	SEARXNG_API: "searxng-connect-form",
 	LINKUP_API: "linkup-api-connect-form",
 	BAIDU_SEARCH_API: "baidu-search-api-connect-form",
+	BRAVE_SEARCH_API: "brave-search-api-connect-form",
 	ELASTICSEARCH_CONNECTOR: "elasticsearch-connect-form",
 	BOOKSTACK_CONNECTOR: "bookstack-connect-form",
 	GITHUB_CONNECTOR: "github-connect-form",

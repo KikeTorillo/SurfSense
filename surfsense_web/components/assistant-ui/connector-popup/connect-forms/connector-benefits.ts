@@ -38,6 +38,11 @@ export function getConnectorBenefits(connectorType: string): string[] | null {
 			"Real-time information from Baidu's search index",
 			"AI-powered summarization with source references",
 		],
+		BRAVE_SEARCH_API: [
+			"Privacy-focused web search powered by Brave's independent index",
+			"Rich snippets with extra context for better results",
+			"Real-time information from 30B+ indexed web pages",
+		],
 		SLACK_CONNECTOR: [
 			"Search through all your Slack messages and conversations",
 			"Access messages from public and private channels",

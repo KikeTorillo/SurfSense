@@ -1,6 +1,7 @@
 import type { FC } from "react";
 import { BaiduSearchApiConnectForm } from "./components/baidu-search-api-connect-form";
 import { BookStackConnectForm } from "./components/bookstack-connect-form";
+import { BraveSearchApiConnectForm } from "./components/brave-search-api-connect-form";
 import { CirclebackConnectForm } from "./components/circleback-connect-form";
 import { ElasticsearchConnectForm } from "./components/elasticsearch-connect-form";
 import { GithubConnectForm } from "./components/github-connect-form";
@@ -47,6 +48,8 @@ export function getConnectFormComponent(connectorType: string): ConnectFormCompo
 			return LinkupApiConnectForm;
 		case "BAIDU_SEARCH_API":
 			return BaiduSearchApiConnectForm;
+		case "BRAVE_SEARCH_API":
+			return BraveSearchApiConnectForm;
 		case "ELASTICSEARCH_CONNECTOR":
 			return ElasticsearchConnectForm;
 		case "BOOKSTACK_CONNECTOR":

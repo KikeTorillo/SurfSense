@@ -6,6 +6,7 @@ export const getConnectorTypeDisplay = (type: string): string => {
 		SEARXNG_API: "SearxNG",
 		LINKUP_API: "Linkup",
 		BAIDU_SEARCH_API: "Baidu Search",
+		BRAVE_SEARCH_API: "Brave Search",
 		SLACK_CONNECTOR: "Slack",
 		TEAMS_CONNECTOR: "Microsoft Teams",
 		NOTION_CONNECTOR: "Notion",

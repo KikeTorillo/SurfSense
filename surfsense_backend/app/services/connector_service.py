@@ -980,6 +980,123 @@ class ConnectorService:
 
         return result_object, documents
 
+    async def search_brave(
+        self, user_query: str, search_space_id: int, top_k: int = 20
+    ) -> tuple:
+        """
+        Search using Brave Search API and return both the source information and documents.
+
+        Args:
+            user_query: The user's query
+            search_space_id: The search space ID
+            top_k: Maximum number of results to return (max 20 per Brave API)
+
+        Returns:
+            tuple: (sources_info, documents)
+        """
+        empty_result = {
+            "id": 13,
+            "name": "Brave Search",
+            "type": "BRAVE_SEARCH_API",
+            "sources": [],
+        }
+
+        # Get Brave connector configuration
+        brave_connector = await self.get_connector_by_type(
+            SearchSourceConnectorType.BRAVE_SEARCH_API, search_space_id
+        )
+
+        if not brave_connector:
+            return empty_result, []
+
+        api_key = brave_connector.config.get("BRAVE_API_KEY")
+        if not api_key:
+            print("ERROR: Brave connector is missing BRAVE_API_KEY in config")
+            return empty_result, []
+
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                response = await client.get(
+                    "https://api.search.brave.com/res/v1/web/search",
+                    params={
+                        "q": user_query,
+                        "count": min(top_k, 20),
+                        "extra_snippets": True,
+                    },
+                    headers={
+                        "X-Subscription-Token": api_key,
+                        "Accept": "application/json",
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
+
+            web_results = data.get("web", {}).get("results", [])
+
+            if not web_results:
+                return empty_result, []
+
+            sources_list = []
+            documents = []
+
+            async with self.counter_lock:
+                for result in web_results:
+                    title = result.get("title", "Brave Search Result")
+                    url = result.get("url", "")
+                    description = result.get("description", "")
+
+                    # Combine description + extra_snippets for richer RAG context
+                    extra_snippets = result.get("extra_snippets", [])
+                    content_parts = [description] + extra_snippets
+                    content = "\n".join(part for part in content_parts if part)
+
+                    source = {
+                        "id": self.source_id_counter,
+                        "title": title,
+                        "description": description,
+                        "url": url,
+                    }
+                    sources_list.append(source)
+
+                    document = {
+                        "chunk_id": self.source_id_counter,
+                        "content": content,
+                        "score": 1.0,  # Brave doesn't provide relevance scores
+                        "document": {
+                            "id": self.source_id_counter,
+                            "title": title,
+                            "document_type": "BRAVE_SEARCH_API",
+                            "metadata": {
+                                "url": url,
+                                "published_date": "",
+                                "source": "BRAVE_SEARCH_API",
+                            },
+                        },
+                    }
+                    documents.append(document)
+                    self.source_id_counter += 1
+
+            result_object = {
+                "id": 13,
+                "name": "Brave Search",
+                "type": "BRAVE_SEARCH_API",
+                "sources": sources_list,
+            }
+
+            return result_object, documents
+
+        except httpx.TimeoutException:
+            print(f"Brave Search timeout for query: {user_query[:100]}")
+            return empty_result, []
+        except httpx.HTTPStatusError as exc:
+            print(
+                f"Brave Search HTTP error {exc.response.status_code}: {exc.response.text[:200]}"
+            )
+            return empty_result, []
+        except Exception as e:
+            print(f"Error searching with Brave: {e!s}")
+            return empty_result, []
+
     async def search_slack(
         self,
         user_query: str,

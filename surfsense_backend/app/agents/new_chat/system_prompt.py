@@ -102,7 +102,7 @@ _TOOL_INSTRUCTIONS["search_knowledge_base"] = """
   - IMPORTANT (REAL-TIME / PUBLIC WEB QUERIES): For questions that require current public web data
     (e.g., live exchange rates, stock prices, breaking news, weather, current events), you MUST call
     `search_knowledge_base` using live web connectors via `connectors_to_search`:
-    ["LINKUP_API", "TAVILY_API", "SEARXNG_API", "BAIDU_SEARCH_API"].
+    ["LINKUP_API", "TAVILY_API", "SEARXNG_API", "BAIDU_SEARCH_API", "BRAVE_SEARCH_API"].
   - For these real-time/public web queries, DO NOT answer from memory and DO NOT say you lack internet
     access before attempting a live connector search.
   - If the live connectors return no relevant results, explain that live web sources did not return enough
@@ -401,7 +401,7 @@ _TOOL_EXAMPLES["search_knowledge_base"] = """
 - User: "Check my Obsidian notes for meeting notes"
   - Call: `search_knowledge_base(query="meeting notes", connectors_to_search=["OBSIDIAN_CONNECTOR"])`
 - User: "search me current usd to inr rate"
-  - Call: `search_knowledge_base(query="current USD to INR exchange rate", connectors_to_search=["LINKUP_API", "TAVILY_API", "SEARXNG_API", "BAIDU_SEARCH_API"])`
+  - Call: `search_knowledge_base(query="current USD to INR exchange rate", connectors_to_search=["LINKUP_API", "TAVILY_API", "SEARXNG_API", "BAIDU_SEARCH_API", "BRAVE_SEARCH_API"])`
   - Then answer using the returned live web results with citations.
 """
 

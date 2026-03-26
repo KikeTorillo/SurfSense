@@ -155,6 +155,12 @@ export const OTHER_CONNECTORS = [
 		connectorType: EnumConnectorName.BAIDU_SEARCH_API,
 	},
 	{
+		id: "brave-search-api",
+		title: "Brave Search",
+		description: "Search with Brave",
+		connectorType: EnumConnectorName.BRAVE_SEARCH_API,
+	},
+	{
 		id: "circleback-connector",
 		title: "Circleback",
 		description: "Receive meeting notes, transcripts",

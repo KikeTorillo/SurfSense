@@ -69,6 +69,7 @@ class SearchSourceConnectorType(StrEnum):
     SEARXNG_API = "SEARXNG_API"
     LINKUP_API = "LINKUP_API"
     BAIDU_SEARCH_API = "BAIDU_SEARCH_API"  # Baidu AI Search API for Chinese web search
+    BRAVE_SEARCH_API = "BRAVE_SEARCH_API"  # Brave Search API with independent web index
     SLACK_CONNECTOR = "SLACK_CONNECTOR"
     TEAMS_CONNECTOR = "TEAMS_CONNECTOR"
     NOTION_CONNECTOR = "NOTION_CONNECTOR"

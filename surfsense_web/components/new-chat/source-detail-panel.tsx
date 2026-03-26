@@ -150,7 +150,8 @@ export function SourceDetailPanel({
 		sourceType === "TAVILY_API" ||
 		sourceType === "LINKUP_API" ||
 		sourceType === "SEARXNG_API" ||
-		sourceType === "BAIDU_SEARCH_API";
+		sourceType === "BAIDU_SEARCH_API" ||
+		sourceType === "BRAVE_SEARCH_API";
 
 	// Find cited chunk index
 	const citedChunkIndex = documentData?.chunks?.findIndex((chunk) => chunk.id === chunkId) ?? -1;

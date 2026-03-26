@@ -513,6 +513,7 @@ def validate_connector_config(
             ],
             "validators": {},
         },
+        "BRAVE_SEARCH_API": {"required": ["BRAVE_API_KEY"], "validators": {}},
         # "SLACK_CONNECTOR": {
         #     "required": [],  # OAuth uses bot_token (encrypted), legacy uses SLACK_BOT_TOKEN
         #     "optional": [

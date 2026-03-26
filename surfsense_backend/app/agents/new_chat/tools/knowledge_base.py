@@ -30,6 +30,7 @@ _LIVE_SEARCH_CONNECTORS: set[str] = {
     "SEARXNG_API",
     "LINKUP_API",
     "BAIDU_SEARCH_API",
+    "BRAVE_SEARCH_API",
 }
 
 # Patterns that indicate the query has no meaningful search signal.
@@ -194,6 +195,7 @@ _ALL_CONNECTORS: list[str] = [
     "SEARXNG_API",
     "LINKUP_API",
     "BAIDU_SEARCH_API",
+    "BRAVE_SEARCH_API",
     "LUMA_CONNECTOR",
     "NOTE",
     "BOOKSTACK_CONNECTOR",
@@ -231,6 +233,7 @@ CONNECTOR_DESCRIPTIONS: dict[str, str] = {
     "SEARXNG_API": "SearxNG search API results (privacy-focused web search)",
     "LINKUP_API": "Linkup search API results (web search)",
     "BAIDU_SEARCH_API": "Baidu search API results (Chinese web search)",
+    "BRAVE_SEARCH_API": "Brave Search API results (privacy-focused web search with independent index)",
     "LUMA_CONNECTOR": "Luma events and meetings",
     "WEBCRAWLER_CONNECTOR": "Webpages indexed by SurfSense (personally selected websites)",
     "CRAWLED_URL": "Webpages indexed by SurfSense (personally selected websites)",
@@ -482,6 +485,7 @@ def format_documents_for_context(
         "SEARXNG_API",
         "LINKUP_API",
         "BAIDU_SEARCH_API",
+        "BRAVE_SEARCH_API",
     }
 
     # Render XML expected by citation instructions, respecting the char budget.
@@ -708,6 +712,7 @@ async def search_knowledge_base_async(
         "SEARXNG_API": ("search_searxng", False, True, {}),
         "LINKUP_API": ("search_linkup", False, False, {"mode": "standard"}),
         "BAIDU_SEARCH_API": ("search_baidu", False, True, {}),
+        "BRAVE_SEARCH_API": ("search_brave", False, True, {}),
     }
 
     # --- Optimization 2: compute the query embedding once, share across all local searches ---
