@@ -25,16 +25,29 @@ export const voiceProfileSchema = z.object({
 	updated_at: z.string().nullable(),
 });
 
-export const createVoiceProfileRequest = z.object({
+const baseVoiceProfileFields = {
 	name: z.string().min(1),
 	search_space_id: z.number(),
-	voice_type: voiceTypeEnum,
-	preset_voice_id: z.string().optional(),
-	design_instructions: z.string().optional(),
-	clone_ref_text: z.string().optional(),
 	style_instructions: z.string().optional(),
 	language: z.string().optional(),
+};
+
+export const createPresetVoiceProfileRequest = z.object({
+	...baseVoiceProfileFields,
+	voice_type: z.literal("preset"),
+	preset_voice_id: z.string().min(1),
 });
+
+export const createDesignVoiceProfileRequest = z.object({
+	...baseVoiceProfileFields,
+	voice_type: z.literal("design"),
+	design_instructions: z.string().min(1),
+});
+
+export const createVoiceProfileRequest = z.discriminatedUnion("voice_type", [
+	createPresetVoiceProfileRequest,
+	createDesignVoiceProfileRequest,
+]);
 
 export const updateVoiceProfileRequest = z.object({
 	id: z.number(),
@@ -60,6 +73,8 @@ export const deleteVoiceProfileResponse = z.object({
 
 export type VoiceType = z.infer<typeof voiceTypeEnum>;
 export type VoiceProfile = z.infer<typeof voiceProfileSchema>;
+export type CreatePresetVoiceProfileRequest = z.infer<typeof createPresetVoiceProfileRequest>;
+export type CreateDesignVoiceProfileRequest = z.infer<typeof createDesignVoiceProfileRequest>;
 export type CreateVoiceProfileRequest = z.infer<typeof createVoiceProfileRequest>;
 export type UpdateVoiceProfileRequest = z.infer<typeof updateVoiceProfileRequest>;
 export type GetVoiceProfilesResponse = z.infer<typeof getVoiceProfilesResponse>;

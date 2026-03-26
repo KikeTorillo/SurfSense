@@ -210,7 +210,7 @@ async def update_tts_config(
             session,
             user,
             db_config.search_space_id,
-            Permission.TTS_CONFIGS_CREATE.value,
+            Permission.TTS_CONFIGS_UPDATE.value,
             "You don't have permission to update TTS configs in this search space",
         )
 

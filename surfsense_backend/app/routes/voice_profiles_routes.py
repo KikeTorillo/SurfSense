@@ -1,12 +1,17 @@
 """CRUD routes for voice profiles (voice library)."""
 
+import json
+import logging
+import os
+import shutil
+import subprocess
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import (
@@ -25,6 +30,8 @@ from app.schemas.voice_profiles import (
 from app.users import current_active_user
 from app.utils.rbac import check_permission
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -36,7 +43,8 @@ async def create_voice_profile(
 ):
     """Create a new voice profile (preset or design type)."""
     await check_permission(
-        session, user, body.search_space_id, Permission.PODCASTS_CREATE
+        session, user, body.search_space_id, Permission.PODCASTS_CREATE,
+        "You don't have permission to create voice profiles in this search space",
     )
     profile = VoiceProfile(
         name=body.name,
@@ -67,64 +75,78 @@ async def create_clone_voice_profile(
 ):
     """Create a clone voice profile with reference audio upload."""
     await check_permission(
-        session, user, search_space_id, Permission.PODCASTS_CREATE
+        session, user, search_space_id, Permission.PODCASTS_CREATE,
+        "You don't have permission to create voice profiles in this search space",
     )
 
     # Generate unique profile ID for the voice library
     clone_id = f"voice_{uuid.uuid4().hex[:12]}"
 
-    # Save audio to the shared voice library volume
-    import os
     voice_lib_dir = os.environ.get("VOICE_LIBRARY_DIR", "/shared_tmp/voice_library")
     profile_dir = os.path.join(voice_lib_dir, "profiles", clone_id)
-    os.makedirs(profile_dir, exist_ok=True)
 
-    # Save and convert audio to WAV (qwen3-tts requires WAV format)
-    audio_data = await audio_file.read()
-    raw_path = os.path.join(profile_dir, "reference_raw")
-    audio_path = os.path.join(profile_dir, "reference.wav")
-    with open(raw_path, "wb") as f:
-        f.write(audio_data)
-
-    # Convert to WAV using ffmpeg (handles any input format)
-    import subprocess
     try:
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", raw_path, "-ar", "24000", "-ac", "1", audio_path],
-            capture_output=True, check=True, timeout=30,
+        os.makedirs(profile_dir, exist_ok=True)
+
+        # Save and convert audio to WAV (qwen3-tts requires WAV format)
+        audio_data = await audio_file.read()
+        raw_path = os.path.join(profile_dir, "reference_raw")
+        audio_path = os.path.join(profile_dir, "reference.wav")
+        with open(raw_path, "wb") as f:
+            f.write(audio_data)
+
+        # Convert to WAV using ffmpeg (handles any input format)
+        try:
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", raw_path, "-ar", "24000", "-ac", "1", audio_path],
+                capture_output=True, check=True, timeout=30,
+            )
+            os.remove(raw_path)
+        except subprocess.CalledProcessError as e:
+            logger.warning(
+                "ffmpeg conversion failed for %s: %s",
+                clone_id, e.stderr.decode(errors="replace"),
+            )
+            os.rename(raw_path, audio_path)
+        except subprocess.TimeoutExpired:
+            logger.warning("ffmpeg conversion timed out for %s", clone_id)
+            os.rename(raw_path, audio_path)
+
+        # Save meta.json for qwen3-tts voice library
+        meta = {
+            "profile_id": clone_id,
+            "name": name,
+            "ref_audio_filename": "reference.wav",
+            "ref_text": ref_text or "",
+            "language": language or "es",
+            "x_vector_only_mode": False,
+        }
+        with open(os.path.join(profile_dir, "meta.json"), "w") as f:
+            json.dump(meta, f)
+
+        profile = VoiceProfile(
+            name=name,
+            search_space_id=search_space_id,
+            voice_type=VoiceType.CLONE,
+            clone_profile_id=clone_id,
+            clone_ref_text=ref_text or None,
+            style_instructions=style_instructions or None,
+            language=language or None,
+            created_by=user.id,
         )
-        os.remove(raw_path)
+        session.add(profile)
+        await session.commit()
+        await session.refresh(profile)
+        return profile
+
+    except HTTPException:
+        raise
     except Exception:
-        # Fallback: keep raw file as-is
-        os.rename(raw_path, audio_path)
-
-    # Save meta.json for qwen3-tts voice library
-    import json
-    meta = {
-        "profile_id": clone_id,
-        "name": name,
-        "ref_audio_filename": "reference.wav",
-        "ref_text": ref_text or "",
-        "language": language or "es",
-        "x_vector_only_mode": False,
-    }
-    with open(os.path.join(profile_dir, "meta.json"), "w") as f:
-        json.dump(meta, f)
-
-    profile = VoiceProfile(
-        name=name,
-        search_space_id=search_space_id,
-        voice_type=VoiceType.CLONE,
-        clone_profile_id=clone_id,
-        clone_ref_text=ref_text or None,
-        style_instructions=style_instructions or None,
-        language=language or None,
-        created_by=user.id,
-    )
-    session.add(profile)
-    await session.commit()
-    await session.refresh(profile)
-    return profile
+        # Clean up orphaned files on any failure
+        if os.path.exists(profile_dir):
+            shutil.rmtree(profile_dir, ignore_errors=True)
+        await session.rollback()
+        raise
 
 
 @router.get("/voice-profiles", response_model=list[VoiceProfileRead])
@@ -135,7 +157,8 @@ async def list_voice_profiles(
 ):
     """List voice profiles for a search space."""
     await check_permission(
-        session, user, search_space_id, Permission.PODCASTS_READ
+        session, user, search_space_id, Permission.PODCASTS_READ,
+        "You don't have permission to view voice profiles in this search space",
     )
     result = await session.execute(
         select(VoiceProfile)
@@ -159,7 +182,8 @@ async def get_voice_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Voice profile not found")
     await check_permission(
-        session, user, profile.search_space_id, Permission.PODCASTS_READ
+        session, user, profile.search_space_id, Permission.PODCASTS_READ,
+        "You don't have permission to view voice profiles in this search space",
     )
     return profile
 
@@ -179,13 +203,14 @@ async def update_voice_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Voice profile not found")
     await check_permission(
-        session, user, profile.search_space_id, Permission.PODCASTS_UPDATE
+        session, user, profile.search_space_id, Permission.PODCASTS_UPDATE,
+        "You don't have permission to update voice profiles in this search space",
     )
 
     update_data = body.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(profile, key, value)
-    profile.updated_at = datetime.now(timezone.utc)
+    profile.updated_at = datetime.now(UTC)
 
     await session.commit()
     await session.refresh(profile)
@@ -206,17 +231,22 @@ async def delete_voice_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Voice profile not found")
     await check_permission(
-        session, user, profile.search_space_id, Permission.PODCASTS_DELETE
+        session, user, profile.search_space_id, Permission.PODCASTS_DELETE,
+        "You don't have permission to delete voice profiles in this search space",
     )
 
     # Clean up clone files if applicable
     if profile.voice_type == VoiceType.CLONE and profile.clone_profile_id:
-        import os
-        import shutil
         voice_lib_dir = os.environ.get("VOICE_LIBRARY_DIR", "/shared_tmp/voice_library")
         profile_dir = os.path.join(voice_lib_dir, "profiles", profile.clone_profile_id)
-        if os.path.exists(profile_dir):
-            shutil.rmtree(profile_dir)
+        try:
+            if os.path.exists(profile_dir):
+                shutil.rmtree(profile_dir)
+        except OSError:
+            logger.warning(
+                "Failed to clean up voice profile directory: %s",
+                profile_dir, exc_info=True,
+            )
 
     await session.delete(profile)
     await session.commit()
@@ -238,7 +268,8 @@ async def preview_voice_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Voice profile not found")
     await check_permission(
-        session, user, profile.search_space_id, Permission.PODCASTS_READ
+        session, user, profile.search_space_id, Permission.PODCASTS_READ,
+        "You don't have permission to view voice profiles in this search space",
     )
 
     # Build TTS request via direct HTTP to proxy (litellm doesn't pass instruct)
@@ -274,8 +305,6 @@ async def preview_voice_profile(
         tts_body["voice"] = f"clone:{profile.clone_profile_id}"
 
     try:
-        import httpx
-
         async with httpx.AsyncClient(timeout=120) as client:
             resp = await client.post(f"{api_base}/audio/speech", json=tts_body)
             if resp.status_code != 200:
@@ -289,4 +318,4 @@ async def preview_voice_profile(
                 headers={"Content-Disposition": f"inline; filename=preview_{profile_id}.mp3"},
             )
     except httpx.HTTPError as e:
-        raise HTTPException(status_code=500, detail=f"TTS preview failed: {e}")
+        raise HTTPException(status_code=500, detail=f"TTS preview failed: {e}") from e

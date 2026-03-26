@@ -382,7 +382,7 @@ async def update_image_gen_config(
             session,
             user,
             db_config.search_space_id,
-            Permission.IMAGE_GENERATIONS_CREATE.value,
+            Permission.IMAGE_GENERATIONS_UPDATE.value,
             "You don't have permission to update image generation configs in this search space",
         )
 

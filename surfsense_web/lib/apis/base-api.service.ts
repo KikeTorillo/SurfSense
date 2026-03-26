@@ -333,6 +333,14 @@ class BaseApiService {
 		});
 	}
 
+	async postBlob(url: string, options?: Omit<RequestOptions, "method" | "responseType">) {
+		return this.request(url, undefined, {
+			...options,
+			method: "POST",
+			responseType: ResponseType.BLOB,
+		});
+	}
+
 	async postFormData<T>(
 		url: string,
 		responseSchema?: ZodType<T>,

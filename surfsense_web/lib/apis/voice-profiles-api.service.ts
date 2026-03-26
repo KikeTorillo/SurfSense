@@ -1,12 +1,12 @@
 import {
 	type CreateVoiceProfileRequest,
-	type UpdateVoiceProfileRequest,
 	createVoiceProfileRequest,
+	deleteVoiceProfileResponse,
 	getVoiceProfilesResponse,
+	type UpdateVoiceProfileRequest,
 	updateVoiceProfileRequest,
 	voiceProfileSchema,
 } from "@/contracts/types/voice-profile.types";
-import { getBearerToken } from "../auth-utils";
 import { ValidationError } from "../error";
 import { baseApiService } from "./base-api.service";
 
@@ -15,10 +15,7 @@ class VoiceProfilesApiService {
 		const params = new URLSearchParams({
 			search_space_id: String(searchSpaceId),
 		}).toString();
-		return baseApiService.get(
-			`/api/v1/voice-profiles?${params}`,
-			getVoiceProfilesResponse
-		);
+		return baseApiService.get(`/api/v1/voice-profiles?${params}`, getVoiceProfilesResponse);
 	};
 
 	createVoiceProfile = async (request: CreateVoiceProfileRequest) => {
@@ -33,16 +30,9 @@ class VoiceProfilesApiService {
 	};
 
 	createCloneVoiceProfile = async (formData: FormData) => {
-		const baseUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "";
-		const token = getBearerToken() || "";
-		const response = await fetch(`${baseUrl}/api/v1/voice-profiles/clone`, {
-			method: "POST",
-			headers: { "Authorization": `Bearer ${token}` },
+		return baseApiService.postFormData(`/api/v1/voice-profiles/clone`, voiceProfileSchema, {
 			body: formData,
 		});
-		if (!response.ok) throw new Error("Failed to create clone voice profile");
-		const data = await response.json();
-		return voiceProfileSchema.parse(data);
 	};
 
 	updateVoiceProfile = async (request: UpdateVoiceProfileRequest) => {
@@ -58,25 +48,13 @@ class VoiceProfilesApiService {
 	};
 
 	deleteVoiceProfile = async (id: number) => {
-		return baseApiService.delete(
-			`/api/v1/voice-profiles/${id}`,
-			voiceProfileSchema
-		);
+		return baseApiService.delete(`/api/v1/voice-profiles/${id}`, deleteVoiceProfileResponse);
 	};
 
 	previewVoice = async (profileId: number, text: string) => {
-		const baseUrl = process.env.NEXT_PUBLIC_FASTAPI_BACKEND_URL || "";
-		const token = getBearerToken() || "";
-		const response = await fetch(`${baseUrl}/api/v1/voice-profiles/${profileId}/preview`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"Authorization": `Bearer ${token}`,
-			},
-			body: JSON.stringify({ text }),
+		return baseApiService.postBlob(`/api/v1/voice-profiles/${profileId}/preview`, {
+			body: { text },
 		});
-		if (!response.ok) throw new Error("Failed to generate preview");
-		return response.blob();
 	};
 }
 
