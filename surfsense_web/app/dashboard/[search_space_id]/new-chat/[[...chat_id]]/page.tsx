@@ -7,13 +7,14 @@ import {
 	useExternalStoreRuntime,
 } from "@assistant-ui/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { disabledToolsAtom } from "@/atoms/agent-tools/agent-tools.atoms";
+import { attachedImagesAtom } from "@/atoms/attached-images.atom";
 import {
 	clearTargetCommentIdAtom,
 	currentThreadAtom,
@@ -36,6 +37,7 @@ import { currentUserAtom } from "@/atoms/user/user-query.atoms";
 import { Thread } from "@/components/assistant-ui/thread";
 import { MobileReportPanel } from "@/components/report-panel/report-panel";
 import type { ThinkingStep } from "@/components/tool-ui/deepagent-thinking";
+import { BrowseWebToolUI } from "@/components/tool-ui/browse-web";
 import { DisplayImageToolUI } from "@/components/tool-ui/display-image";
 import { DisplayVideoToolUI } from "@/components/tool-ui/display-video";
 import { GeneratePodcastToolUI } from "@/components/tool-ui/generate-podcast";
@@ -187,6 +189,9 @@ export default function NewChatPage() {
 
 	// Get disabled tools from the tool toggle UI
 	const disabledTools = useAtomValue(disabledToolsAtom);
+
+	// Jotai store for reading attached images inside callbacks
+	const jotaiStore = useStore();
 
 	// Get mentioned document IDs from the composer (derived from @ mentions + sidebar selections)
 	const mentionedDocumentIds = useAtomValue(mentionedDocumentIdsAtom);
@@ -454,7 +459,11 @@ export default function NewChatPage() {
 				}
 			}
 
-			if (!userQuery.trim()) return;
+			// Read attached images from atom and clear them
+			const currentImages = jotaiStore.get(attachedImagesAtom);
+			jotaiStore.set(attachedImagesAtom, []);
+
+			if (!userQuery.trim() && currentImages.length === 0) return;
 
 			// Check if podcast is already generating
 			if (isPodcastGenerating() && looksLikePodcastRequest(userQuery)) {
@@ -513,10 +522,16 @@ export default function NewChatPage() {
 						}
 					: undefined;
 
+			// Build user message content: text parts + image parts
+			const userMessageContent: ThreadMessageLike["content"] = [...message.content];
+			for (const img of currentImages) {
+				userMessageContent.push({ type: "image", image: img.dataUrl });
+			}
+
 			const userMessage: ThreadMessageLike = {
 				id: userMsgId,
 				role: "user",
-				content: message.content,
+				content: userMessageContent,
 				createdAt: new Date(),
 				metadata: authorMetadata,
 			};
@@ -524,7 +539,7 @@ export default function NewChatPage() {
 
 			// Track message sent
 			trackChatMessageSent(searchSpaceId, currentThreadId, {
-				hasAttachments: false,
+				hasAttachments: currentImages.length > 0,
 				hasMentionedDocuments:
 					mentionedDocumentIds.surfsense_doc_ids.length > 0 ||
 					mentionedDocumentIds.document_ids.length > 0,
@@ -550,6 +565,13 @@ export default function NewChatPage() {
 			}
 
 			const persistContent: unknown[] = [...message.content];
+
+			if (currentImages.length > 0) {
+				persistContent.push({
+					type: "attachments",
+					images: currentImages.map((img) => ({ dataUrl: img.dataUrl, name: img.name })),
+				});
+			}
 
 			if (allMentionedDocs.length > 0) {
 				persistContent.push({
@@ -650,6 +672,10 @@ export default function NewChatPage() {
 							? mentionedDocumentIds.surfsense_doc_ids
 							: undefined,
 						disabled_tools: disabledTools.length > 0 ? disabledTools : undefined,
+						image_data_urls:
+							currentImages.length > 0
+								? currentImages.map((img) => img.dataUrl)
+								: undefined,
 					}),
 					signal: controller.signal,
 				});
@@ -1666,6 +1692,7 @@ export default function NewChatPage() {
 			<DisplayImageToolUI />
 			<DisplayVideoToolUI />
 			<ScrapeWebpageToolUI />
+			<BrowseWebToolUI />
 			<SaveMemoryToolUI />
 			<RecallMemoryToolUI />
 			<CreateNotionPageToolUI />

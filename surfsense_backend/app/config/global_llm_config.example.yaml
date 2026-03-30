@@ -319,8 +319,20 @@ global_video_generation_configs:
       size: "768x512"
       frames: 97
 
+  # WAN 2.2 via local ComfyUI proxy (text-to-video and image-to-video)
+  - id: -2
+    name: "WAN 2.2 (Local)"
+    description: "Local WAN 2.2 14B via ComfyUI proxy — text-to-video and image-to-video"
+    provider: "OPENAI"
+    model_name: "wan2.2-t2v"
+    api_key: "local"
+    api_base: "http://comfyui-proxy:8080"
+    extra_params:
+      size: "848x480"
+      frames: 41
+
   # Example: Cloud video generation provider
-  # - id: -2
+  # - id: -3
   #   name: "OpenAI Sora"
   #   description: "OpenAI Sora video generation"
   #   provider: "OPENAI"

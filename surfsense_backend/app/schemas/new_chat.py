@@ -175,6 +175,9 @@ class NewChatRequest(BaseModel):
     disabled_tools: list[str] | None = (
         None  # Optional list of tool names the user has disabled from the UI
     )
+    image_data_urls: list[str] | None = (
+        None  # Optional base64 data URLs of images attached by the user
+    )
 
 
 class RegenerateRequest(BaseModel):

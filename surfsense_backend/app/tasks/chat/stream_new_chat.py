@@ -406,6 +406,22 @@ async def _stream_agent_events(
                     status="in_progress",
                     items=last_active_step_items,
                 )
+            elif tool_name == "browse_web":
+                task_desc = (
+                    tool_input.get("task", "")
+                    if isinstance(tool_input, dict)
+                    else str(tool_input)
+                )
+                last_active_step_title = "Browsing the web"
+                last_active_step_items = [
+                    f"Task: {task_desc[:100]}{'...' if len(task_desc) > 100 else ''}"
+                ]
+                yield streaming_service.format_thinking_step(
+                    step_id=tool_step_id,
+                    title="Browsing the web",
+                    status="in_progress",
+                    items=last_active_step_items,
+                )
             elif tool_name == "generate_podcast":
                 podcast_title = (
                     tool_input.get("podcast_title", "SurfSense Podcast")
@@ -606,6 +622,31 @@ async def _stream_agent_events(
                 yield streaming_service.format_thinking_step(
                     step_id=original_step_id,
                     title="Scraping webpage",
+                    status="completed",
+                    items=completed_items,
+                )
+            elif tool_name == "browse_web":
+                if isinstance(tool_output, dict):
+                    status = tool_output.get("status", "unknown")
+                    urls = tool_output.get("urls_visited", [])
+                    actions = tool_output.get("actions_taken", 0)
+                    duration = tool_output.get("duration_seconds", 0)
+                    if status == "error" or status == "timeout":
+                        error_msg = tool_output.get("error", "Browser task failed")
+                        completed_items = [
+                            *last_active_step_items,
+                            f"Error: {error_msg[:80]}",
+                        ]
+                    else:
+                        completed_items = [
+                            *last_active_step_items,
+                            f"Visited {len(urls)} page(s), {actions} actions in {duration}s",
+                        ]
+                else:
+                    completed_items = [*last_active_step_items, "Browsing completed"]
+                yield streaming_service.format_thinking_step(
+                    step_id=original_step_id,
+                    title="Browsing the web",
                     status="completed",
                     items=completed_items,
                 )
@@ -878,6 +919,60 @@ async def _stream_agent_events(
                         f"Scrape failed: {error_msg}",
                         "error",
                     )
+            elif tool_name == "browse_web":
+                if isinstance(tool_output, dict):
+                    # Exclude large extracted_content from the output sent to frontend
+                    display_output = {
+                        k: v
+                        for k, v in tool_output.items()
+                        if k != "extracted_content"
+                    }
+                    if "extracted_content" in tool_output:
+                        content = tool_output.get("extracted_content", "")
+                        display_output["content_preview"] = (
+                            content[:500] + "..."
+                            if len(content) > 500
+                            else content
+                        )
+                    yield streaming_service.format_tool_output_available(
+                        tool_call_id,
+                        display_output,
+                    )
+                else:
+                    yield streaming_service.format_tool_output_available(
+                        tool_call_id,
+                        {"result": tool_output},
+                    )
+                status = (
+                    tool_output.get("status", "unknown")
+                    if isinstance(tool_output, dict)
+                    else "unknown"
+                )
+                if status in ("success", "partial"):
+                    urls = (
+                        tool_output.get("urls_visited", [])
+                        if isinstance(tool_output, dict)
+                        else []
+                    )
+                    duration = (
+                        tool_output.get("duration_seconds", 0)
+                        if isinstance(tool_output, dict)
+                        else 0
+                    )
+                    yield streaming_service.format_terminal_info(
+                        f"Browsed {len(urls)} page(s) in {duration}s",
+                        "success",
+                    )
+                else:
+                    error_msg = (
+                        tool_output.get("error", "Browser task failed")
+                        if isinstance(tool_output, dict)
+                        else "Browser task failed"
+                    )
+                    yield streaming_service.format_terminal_info(
+                        f"Browse failed: {error_msg[:60]}",
+                        "error",
+                    )
             elif tool_name == "search_knowledge_base":
                 yield streaming_service.format_tool_output_available(
                     tool_call_id,
@@ -1073,6 +1168,7 @@ async def stream_new_chat(
     thread_visibility: ChatVisibility | None = None,
     current_user_display_name: str | None = None,
     disabled_tools: list[str] | None = None,
+    image_data_urls: list[str] | None = None,
 ) -> AsyncGenerator[str, None]:
     """
     Stream chat responses from the new SurfSense deep agent.
@@ -1205,6 +1301,7 @@ async def stream_new_chat(
             thread_visibility=visibility,
             sandbox_backend=sandbox_backend,
             disabled_tools=disabled_tools,
+            user_image_data_urls=image_data_urls,
         )
         _perf_log.info(
             "[stream_new_chat] Agent created in %.3fs", time.perf_counter() - _t0
@@ -1317,8 +1414,16 @@ async def stream_new_chat(
         #         elif msg.role == "assistant":
         #             langchain_messages.append(AIMessage(content=msg.content))
         # else:
-        # Fallback: just use the current user query with attachment context
-        langchain_messages.append(HumanMessage(content=final_query))
+        # Build HumanMessage — multimodal if images are attached
+        if image_data_urls:
+            content_parts: list[dict] = [{"type": "text", "text": final_query}]
+            for data_url in image_data_urls:
+                content_parts.append(
+                    {"type": "image_url", "image_url": {"url": data_url}}
+                )
+            langchain_messages.append(HumanMessage(content=content_parts))
+        else:
+            langchain_messages.append(HumanMessage(content=final_query))
 
         input_state = {
             # Lets not pass this message atm because we are using the checkpointer to manage the conversation history

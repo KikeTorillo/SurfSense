@@ -1152,6 +1152,20 @@
 		"instructions_placeholder": "A warm, friendly female voice with clear enunciation...",
 		"clone_dialog_title": "Clone Voice",
 		"clone_dialog_desc": "Upload a reference audio and its transcription to clone a voice.",
+		"clone_tab_upload": "Upload file",
+		"clone_tab_record": "Record voice",
+		"clone_sample_hint": "Read this text aloud (10-15 seconds)",
+		"clone_shuffle_text": "Different text",
+		"clone_record_start": "Start recording",
+		"clone_record_stop": "Stop recording",
+		"clone_record_again": "Re-record",
+		"clone_recording_timer": "{elapsed}s / 15s",
+		"clone_mic_denied": "Microphone access denied",
+		"clone_mic_not_found": "No microphone found",
+		"clone_mic_not_supported": "Your browser does not support audio recording",
+		"clone_mic_error": "Error accessing the microphone",
+		"clone_recording_too_short": "Recording too short (minimum 3 seconds)",
+		"clone_select_language_first": "Select a language first",
 		"audio_label": "Reference audio",
 		"audio_select": "Select file",
 		"ref_text_label": "Audio transcription",
@@ -1329,7 +1343,11 @@
 		"action_export_markdown": "Export as Markdown",
 		"action_refresh": "Refresh",
 		"branch_previous": "Previous",
-		"branch_next": "Next"
+		"branch_next": "Next",
+		"attach_image": "Attach image",
+		"image_too_large": "Image is too large (max {max})",
+		"max_images_reached": "Maximum {max} images per message",
+		"invalid_image_type": "Only JPEG, PNG, GIF and WebP images are supported"
 	},
 	"team": {
 		"name": "Name",
@@ -1636,5 +1654,12 @@
 	"announcements": {
 		"no_announcements": "No announcements",
 		"all_caught_up": "You're all caught up! New announcements will appear here."
+	},
+	"browseWebTool": {
+		"errorTitle": "Failed to browse webpage",
+		"loading": "Browsing the web...",
+		"successTitle": "Browsing completed",
+		"stats": "{pages} page(s), {actions} actions in {duration}s",
+		"morePages": "+{count} more page(s)"
 	}
 }

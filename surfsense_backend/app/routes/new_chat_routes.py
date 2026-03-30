@@ -1136,6 +1136,7 @@ async def handle_new_chat(
                 thread_visibility=thread.visibility,
                 current_user_display_name=user.display_name or "A team member",
                 disabled_tools=request.disabled_tools,
+                image_data_urls=request.image_data_urls,
             ),
             media_type="text/event-stream",
             headers={

@@ -271,6 +271,29 @@ _TOOL_INSTRUCTIONS["scrape_webpage"] = """
     * Don't show every image - just the most relevant 1-3 images that enhance understanding.
 """
 
+_TOOL_INSTRUCTIONS["browse_web"] = """
+- browse_web: Browse the web interactively using a real headless browser.
+  - Use this tool when you need ACTUAL BROWSER INTERACTION that scrape_webpage cannot provide:
+    * JavaScript-rendered or dynamic content (SPAs, dashboards, interactive tables)
+    * Multi-step navigation (follow links, paginate through results, explore a site)
+    * Fill forms, click buttons, interact with web applications
+    * When scrape_webpage returned empty or incomplete content due to JS rendering
+  - WHEN NOT TO USE (prefer faster alternatives):
+    * Simple web searches → use search_knowledge_base with live web connectors
+    * Reading static articles/blog posts → use scrape_webpage (faster and cheaper)
+    * Getting URL metadata → use link_preview
+  - Args:
+    - task: A detailed natural language description of what to do in the browser.
+      Be specific about what URL to visit and what information to extract or action to perform.
+      Example: "Navigate to https://example.com/pricing and extract all pricing plan details including plan names, prices, and features"
+    - max_steps: Maximum number of browser actions to take (default: 15, max: 30).
+      Higher values allow more complex multi-step tasks but take longer.
+  - Returns: Extracted content (text), URLs visited, number of actions taken, and duration.
+  - NOTE: Browser tasks take 10-120 seconds. Inform the user this may take a moment.
+  - IMPORTANT: Write a very detailed task description. The more specific you are about
+    what to navigate, click, and extract, the better the results.
+"""
+
 # Memory tool instructions have private and shared variants.
 # We store them keyed as "save_memory" / "recall_memory" with sub-keys.
 _MEMORY_TOOL_INSTRUCTIONS: dict[str, dict[str, str]] = {
@@ -454,6 +477,16 @@ _TOOL_EXAMPLES["scrape_webpage"] = """
   - IMPORTANT: Always attempt scraping first. Never refuse before trying the tool.
 """
 
+_TOOL_EXAMPLES["browse_web"] = """
+- User: "Get the pricing details from example.com" (and scrape_webpage returned empty/JS content)
+  - Call: `browse_web(task="Navigate to https://example.com/pricing and extract all pricing plan details including plan names, monthly/annual prices, features included in each plan, and any free trial information")`
+- User: "Search for 'machine learning courses' on coursera.org and list the top results"
+  - Call: `browse_web(task="Navigate to https://www.coursera.org, search for 'machine learning courses', and extract the names, ratings, and descriptions of the top 5 course results")`
+- User: "Check the current status of flight AA123"
+  - First try: `search_knowledge_base(query="flight AA123 status", connectors_to_search=["BRAVE_SEARCH_API"])`
+  - If insufficient: `browse_web(task="Navigate to a flight tracking website like flightaware.com, search for flight AA123, and extract the current status, departure/arrival times, and any delays")`
+"""
+
 _TOOL_EXAMPLES["display_image"] = """
 - User: "Show me this image: https://example.com/image.png"
   - Call: `display_image(src="https://example.com/image.png", alt="User shared image")`
@@ -489,13 +522,17 @@ _TOOL_INSTRUCTIONS["generate_video"] = """
   - Args:
     - prompt: A detailed text description of the video to generate. Be specific about action, movement, style, and mood.
     - mode: "t2v" for text-to-video (default), "i2v" for image-to-video
-    - image_url: URL of source image (only for i2v mode)
+    - image_url: Optional HTTP URL of a source image for i2v mode. Only needed when the image
+      comes from a URL (e.g. from generate_image output). When the user attached an image in
+      the chat, you do NOT need to pass image_url — the attached image is used automatically.
   - Returns: A dictionary with the generated video URL in the "src" field.
   - CRITICAL: After calling generate_video, you MUST call `display_video` with the returned "src" URL
     to actually show the video in the chat. The generate_video tool only generates the video and returns
     the URL — it does NOT display anything. You must always follow up with display_video.
   - IMPORTANT: Write a detailed, descriptive prompt for best results. Include specific details about
     movement, camera angle, lighting, and atmosphere.
+  - IMPORTANT: For i2v mode with a user-attached image, just set mode="i2v" — do NOT try to pass the
+    image data as image_url. The tool picks up the attached image automatically.
   - NOTE: Video generation takes about 1 minute. Inform the user this will take a moment.
 """
 
@@ -508,9 +545,10 @@ _TOOL_EXAMPLES["generate_video"] = """
 - User: "Generate a video of waves crashing on a beach"
   - Step 1: `generate_video(prompt="Cinematic slow-motion video of turquoise ocean waves crashing on a golden sand beach at sunset, foam spraying in the warm light, camera at low angle, peaceful and serene atmosphere")`
   - Step 2: Use the returned "src" URL to display it: `display_video(src="<returned_url>", alt="Ocean waves on a beach at sunset", title="Generated Video")`
-- User: "Animate this image" (with an image URL in context)
-  - Step 1: `generate_video(prompt="Gentle animation bringing the scene to life with subtle movement and atmosphere", mode="i2v", image_url="<the_image_url>")`
+- User: "Animate this image" (user attached an image in the conversation)
+  - Step 1: `generate_video(prompt="Gentle animation bringing the scene to life with subtle movement and atmosphere", mode="i2v")`
   - Step 2: `display_video(src="<returned_url>", alt="Animated scene", title="Generated Video")`
+  - NOTE: No need to pass image_url when the user attached an image — it is used automatically.
 """
 
 # All tool names that have prompt instructions (order matters for prompt readability)
@@ -525,6 +563,7 @@ _ALL_TOOL_NAMES_ORDERED = [
     "display_video",
     "generate_video",
     "scrape_webpage",
+    "browse_web",
     "save_memory",
     "recall_memory",
 ]

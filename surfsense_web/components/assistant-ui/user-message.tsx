@@ -1,7 +1,7 @@
 import { ActionBarPrimitive, MessagePrimitive, useAssistantState } from "@assistant-ui/react";
 import { useAtomValue } from "jotai";
 import { FileText, Pen } from "lucide-react";
-import { type FC, useState } from "react";
+import { type FC, useMemo, useState } from "react";
 import { messageDocumentsMapAtom } from "@/atoms/chat/mentioned-documents.atom";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 
@@ -48,6 +48,16 @@ export const UserMessage: FC = () => {
 	const metadata = useAssistantState(({ message }) => message?.metadata);
 	const author = metadata?.custom?.author as AuthorMetadata | undefined;
 
+	// Extract image parts from message content
+	const messageContent = useAssistantState(({ message }) => message?.content);
+	const imageParts = useMemo(
+		() =>
+			(messageContent ?? []).filter(
+				(part): part is { type: "image"; image: string } => part.type === "image"
+			),
+		[messageContent]
+	);
+
 	return (
 		<MessagePrimitive.Root
 			className="aui-user-message-root fade-in slide-in-from-bottom-1 mx-auto grid w-full max-w-(--thread-max-width) animate-in auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 py-3 duration-150 [&:where(>*)]:col-start-2"
@@ -68,6 +78,19 @@ export const UserMessage: FC = () => {
 									<FileText className="size-3" />
 									<span className="max-w-[150px] truncate">{doc.title}</span>
 								</span>
+							))}
+						</div>
+					)}
+					{/* Attached images */}
+					{imageParts.length > 0 && (
+						<div className="flex flex-wrap gap-2 mb-2 justify-end">
+							{imageParts.map((img, i) => (
+								<img
+									key={i}
+									src={img.image}
+									alt="Attached"
+									className="max-h-48 max-w-64 rounded-lg border border-border object-contain"
+								/>
 							))}
 						</div>
 					)}

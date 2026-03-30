@@ -11,6 +11,23 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 	if (typeof msg.content === "string") {
 		content = [{ type: "text", text: msg.content }];
 	} else if (Array.isArray(msg.content)) {
+		// Extract image attachments before filtering
+		const imageParts: Array<{ type: "image"; image: string }> = [];
+		for (const part of msg.content) {
+			if (
+				typeof part === "object" &&
+				part !== null &&
+				"type" in part &&
+				(part as { type: string }).type === "attachments" &&
+				"images" in part &&
+				Array.isArray((part as { images: unknown[] }).images)
+			) {
+				for (const img of (part as { images: Array<{ dataUrl: string; name: string }> }).images) {
+					imageParts.push({ type: "image", image: img.dataUrl });
+				}
+			}
+		}
+
 		// Filter out custom metadata parts - they're handled separately
 		const filteredContent = msg.content.filter((part: unknown) => {
 			if (typeof part !== "object" || part === null || !("type" in part)) return true;
@@ -22,9 +39,12 @@ export function convertToThreadMessage(msg: MessageRecord): ThreadMessageLike {
 				partType !== "attachments"
 			);
 		});
+
+		// Combine renderable content + restored image parts
+		const combined = [...filteredContent, ...imageParts];
 		content =
-			filteredContent.length > 0
-				? (filteredContent as ThreadMessageLike["content"])
+			combined.length > 0
+				? (combined as ThreadMessageLike["content"])
 				: [{ type: "text", text: "" }];
 	} else {
 		content = [{ type: "text", text: String(msg.content) }];

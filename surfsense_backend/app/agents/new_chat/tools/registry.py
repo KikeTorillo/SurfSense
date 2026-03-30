@@ -45,6 +45,7 @@ from langchain_core.tools import BaseTool
 
 from app.db import ChatVisibility
 
+from .browse_web import create_browse_web_tool
 from .display_image import create_display_image_tool
 from .display_video import create_display_video_tool
 from .generate_image import create_generate_image_tool
@@ -193,6 +194,7 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
         factory=lambda deps: create_generate_video_tool(
             search_space_id=deps["search_space_id"],
             db_session=deps["db_session"],
+            user_image_data_urls=deps.get("user_image_data_urls"),
         ),
         requires=["search_space_id", "db_session"],
     ),
@@ -204,6 +206,15 @@ BUILTIN_TOOLS: list[ToolDefinition] = [
             firecrawl_api_key=deps.get("firecrawl_api_key"),
         ),
         requires=[],  # firecrawl_api_key is optional
+    ),
+    # Browser automation tool - interactive web browsing with a real browser
+    ToolDefinition(
+        name="browse_web",
+        description="Browse the web interactively using a real browser for JS-rendered content, forms, and multi-step navigation",
+        factory=lambda deps: create_browse_web_tool(
+            llm=deps["llm"],
+        ),
+        requires=["llm"],
     ),
     # Note: write_todos is now provided by TodoListMiddleware from deepagents
     # Surfsense documentation search tool

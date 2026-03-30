@@ -137,6 +137,7 @@ async def create_surfsense_deep_agent(
     firecrawl_api_key: str | None = None,
     thread_visibility: ChatVisibility | None = None,
     sandbox_backend: SandboxBackendProtocol | None = None,
+    user_image_data_urls: list[str] | None = None,
 ):
     """
     Create a SurfSense deep agent with configurable tools and prompts.
@@ -263,6 +264,8 @@ async def create_surfsense_deep_agent(
         "available_connectors": available_connectors,
         "available_document_types": available_document_types,
         "max_input_tokens": _max_input_tokens,
+        "user_image_data_urls": user_image_data_urls,
+        "llm": llm,
     }
 
     # Disable Notion action tools if no Notion connector is configured

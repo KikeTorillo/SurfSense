@@ -91,7 +91,7 @@ const VIDEO_GEN_PROVIDERS: VideoGenProvider[] = [
 	{
 		value: "OPENAI",
 		label: "OpenAI",
-		example: "ltx-2.3-t2v, ltx-2.3-i2v",
+		example: "ltx-2.3-t2v, ltx-2.3-i2v, wan2.2-t2v, wan2.2-i2v",
 		description: "Video generation via OpenAI-compatible API",
 	},
 ];
@@ -105,6 +105,8 @@ interface VideoGenModel {
 const VIDEO_GEN_MODELS: VideoGenModel[] = [
 	{ value: "ltx-2.3-t2v", label: "LTX 2.3 Text-to-Video", provider: "OPENAI" },
 	{ value: "ltx-2.3-i2v", label: "LTX 2.3 Image-to-Video", provider: "OPENAI" },
+	{ value: "wan2.2-t2v", label: "WAN 2.2 Text-to-Video", provider: "OPENAI" },
+	{ value: "wan2.2-i2v", label: "WAN 2.2 Image-to-Video", provider: "OPENAI" },
 ];
 
 function getVideoGenModelsByProvider(provider: string): VideoGenModel[] {

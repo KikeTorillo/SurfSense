@@ -1152,6 +1152,20 @@
 		"instructions_placeholder": "A warm, friendly female voice with clear enunciation...",
 		"clone_dialog_title": "克隆语音",
 		"clone_dialog_desc": "上传参考音频及其转录文本以克隆语音。",
+		"clone_tab_upload": "上传文件",
+		"clone_tab_record": "录制语音",
+		"clone_sample_hint": "大声朗读此文本（10-15秒）",
+		"clone_shuffle_text": "换一段文本",
+		"clone_record_start": "开始录制",
+		"clone_record_stop": "停止录制",
+		"clone_record_again": "重新录制",
+		"clone_recording_timer": "{elapsed}秒 / 15秒",
+		"clone_mic_denied": "麦克风访问被拒绝",
+		"clone_mic_not_found": "未找到麦克风",
+		"clone_mic_not_supported": "您的浏览器不支持音频录制",
+		"clone_mic_error": "访问麦克风时出错",
+		"clone_recording_too_short": "录制太短（最少3秒）",
+		"clone_select_language_first": "请先选择语言",
 		"audio_label": "参考音频",
 		"audio_select": "选择文件",
 		"ref_text_label": "音频转录",
@@ -1329,7 +1343,11 @@
 		"action_export_markdown": "导出为 Markdown",
 		"action_refresh": "刷新",
 		"branch_previous": "上一个",
-		"branch_next": "下一个"
+		"branch_next": "下一个",
+		"attach_image": "附加图片",
+		"image_too_large": "图片太大（最大 {max}）",
+		"max_images_reached": "每条消息最多 {max} 张图片",
+		"invalid_image_type": "仅支持 JPEG、PNG、GIF 和 WebP 格式的图片"
 	},
 	"team": {
 		"name": "名称",
@@ -1636,5 +1654,12 @@
 	"announcements": {
 		"no_announcements": "暂无公告",
 		"all_caught_up": "您已全部看完！新公告将显示在这里。"
+	},
+	"browseWebTool": {
+		"errorTitle": "网页浏览失败",
+		"loading": "正在浏览网页...",
+		"successTitle": "浏览完成",
+		"stats": "{pages} 个页面，{actions} 个操作，耗时 {duration} 秒",
+		"morePages": "还有 {count} 个页面"
 	}
 }

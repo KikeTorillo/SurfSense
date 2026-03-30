@@ -44,6 +44,7 @@ interface InlineMentionEditorProps {
 	onChange?: (text: string, docs: MentionedDocument[]) => void;
 	onDocumentRemove?: (docId: number, docType?: string) => void;
 	onKeyDown?: (e: React.KeyboardEvent) => void;
+	onImagePaste?: (files: File[]) => void;
 	disabled?: boolean;
 	className?: string;
 	initialDocuments?: MentionedDocument[];
@@ -93,6 +94,7 @@ export const InlineMentionEditor = forwardRef<InlineMentionEditorRef, InlineMent
 			onChange,
 			onDocumentRemove,
 			onKeyDown,
+			onImagePaste,
 			disabled = false,
 			className,
 			initialDocuments = [],
@@ -602,12 +604,23 @@ export const InlineMentionEditor = forwardRef<InlineMentionEditorRef, InlineMent
 			[onKeyDown, onSubmit, onDocumentRemove, onMentionClose]
 		);
 
-		// Handle paste - strip formatting
-		const handlePaste = useCallback((e: React.ClipboardEvent) => {
-			e.preventDefault();
-			const text = e.clipboardData.getData("text/plain");
-			document.execCommand("insertText", false, text);
-		}, []);
+		// Handle paste - strip formatting, detect images
+		const handlePaste = useCallback(
+			(e: React.ClipboardEvent) => {
+				const imageFiles = Array.from(e.clipboardData.files).filter((f) =>
+					f.type.startsWith("image/")
+				);
+				if (imageFiles.length > 0) {
+					e.preventDefault();
+					onImagePaste?.(imageFiles);
+					return;
+				}
+				e.preventDefault();
+				const text = e.clipboardData.getData("text/plain");
+				document.execCommand("insertText", false, text);
+			},
+			[onImagePaste]
+		);
 
 		// Handle composition (for IME input)
 		const handleCompositionStart = useCallback(() => {

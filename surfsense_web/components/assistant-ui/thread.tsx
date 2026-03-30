@@ -19,6 +19,7 @@ import {
 	ChevronRightIcon,
 	CopyIcon,
 	DownloadIcon,
+	ImagePlus,
 	RefreshCwIcon,
 	SquareIcon,
 	Unplug,
@@ -36,6 +37,13 @@ import {
 	hydrateDisabledToolsAtom,
 	toggleToolAtom,
 } from "@/atoms/agent-tools/agent-tools.atoms";
+import {
+	type AttachedImage,
+	ACCEPTED_IMAGE_TYPES,
+	MAX_IMAGE_SIZE_BYTES,
+	MAX_IMAGES,
+	attachedImagesAtom,
+} from "@/atoms/attached-images.atom";
 import { chatSessionStateAtom } from "@/atoms/chat/chat-session-state.atom";
 import {
 	mentionedDocumentsAtom,
@@ -83,6 +91,7 @@ import { useBatchCommentsPreload } from "@/hooks/use-comments";
 import { useCommentsElectric } from "@/hooks/use-comments-electric";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface ThreadProps {
 	messageThinkingSteps?: Map<string, ThinkingStep[]>;
@@ -424,6 +433,98 @@ const Composer: FC = () => {
 		return () => window.removeEventListener(SLIDEOUT_PANEL_OPENED_EVENT, handler);
 	}, []);
 
+	// Attached images state
+	const [attachedImages, setAttachedImages] = useAtom(attachedImagesAtom);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [isDraggingImage, setIsDraggingImage] = useState(false);
+
+	const processImageFiles = useCallback(
+		(files: File[]) => {
+			const imageFiles = files.filter((f) => ACCEPTED_IMAGE_TYPES.includes(f.type));
+			if (imageFiles.length === 0) {
+				toast.error(t("invalid_image_type"));
+				return;
+			}
+			const remaining = MAX_IMAGES - attachedImages.length;
+			if (remaining <= 0) {
+				toast.error(t("max_images_reached", { max: String(MAX_IMAGES) }));
+				return;
+			}
+			const toProcess = imageFiles.slice(0, remaining);
+			if (imageFiles.length > remaining) {
+				toast.error(t("max_images_reached", { max: String(MAX_IMAGES) }));
+			}
+			for (const file of toProcess) {
+				if (file.size > MAX_IMAGE_SIZE_BYTES) {
+					toast.error(t("image_too_large", { max: "5MB" }));
+					continue;
+				}
+				const reader = new FileReader();
+				reader.onload = () => {
+					const dataUrl = reader.result as string;
+					setAttachedImages((prev) => [
+						...prev,
+						{
+							id: crypto.randomUUID(),
+							dataUrl,
+							name: file.name,
+							size: file.size,
+						},
+					]);
+				};
+				reader.readAsDataURL(file);
+			}
+		},
+		[attachedImages.length, setAttachedImages, t]
+	);
+
+	const handleRemoveImage = useCallback(
+		(id: string) => {
+			setAttachedImages((prev) => prev.filter((img) => img.id !== id));
+		},
+		[setAttachedImages]
+	);
+
+	const handleImageFileSelect = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			if (e.target.files) {
+				processImageFiles(Array.from(e.target.files));
+				e.target.value = "";
+			}
+		},
+		[processImageFiles]
+	);
+
+	const handleImagePaste = useCallback(
+		(files: File[]) => {
+			processImageFiles(files);
+		},
+		[processImageFiles]
+	);
+
+	const handleComposerDragOver = useCallback((e: React.DragEvent) => {
+		e.preventDefault();
+		if (e.dataTransfer.types.includes("Files")) {
+			setIsDraggingImage(true);
+		}
+	}, []);
+
+	const handleComposerDragLeave = useCallback((e: React.DragEvent) => {
+		e.preventDefault();
+		setIsDraggingImage(false);
+	}, []);
+
+	const handleComposerDrop = useCallback(
+		(e: React.DragEvent) => {
+			e.preventDefault();
+			setIsDraggingImage(false);
+			if (e.dataTransfer.files.length > 0) {
+				processImageFiles(Array.from(e.dataTransfer.files));
+			}
+		},
+		[processImageFiles]
+	);
+
 	// Sync editor text with assistant-ui composer runtime
 	const handleEditorChange = useCallback(
 		(text: string) => {
@@ -486,6 +587,7 @@ const Composer: FC = () => {
 			editorRef.current?.clear();
 			setMentionedDocuments([]);
 			setSidebarDocs([]);
+			// Note: attachedImages are cleared inside onNew (page.tsx) after reading them
 		}
 	}, [
 		showDocumentPopover,
@@ -537,7 +639,15 @@ const Composer: FC = () => {
 				currentUserId={currentUser?.id ?? null}
 				members={members ?? []}
 			/>
-			<div className="aui-composer-attachment-dropzone flex w-full flex-col overflow-hidden rounded-2xl border-input bg-muted pt-2 outline-none transition-shadow">
+			<div
+				className={cn(
+					"aui-composer-attachment-dropzone flex w-full flex-col overflow-hidden rounded-2xl border-input bg-muted pt-2 outline-none transition-shadow",
+					isDraggingImage && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+				)}
+				onDragOver={handleComposerDragOver}
+				onDragLeave={handleComposerDragLeave}
+				onDrop={handleComposerDrop}
+			>
 				{/* Inline editor with @mention support */}
 				<div ref={editorContainerRef} className="aui-composer-input-wrapper px-4 pt-3 pb-6">
 					<InlineMentionEditor
@@ -549,9 +659,31 @@ const Composer: FC = () => {
 						onDocumentRemove={handleDocumentRemove}
 						onSubmit={handleSubmit}
 						onKeyDown={handleKeyDown}
+						onImagePaste={handleImagePaste}
 						className="min-h-[24px]"
 					/>
 				</div>
+				{/* Attached image previews */}
+				{attachedImages.length > 0 && (
+					<div className="flex gap-2 px-4 pb-2 overflow-x-auto">
+						{attachedImages.map((img) => (
+							<div key={img.id} className="relative group shrink-0">
+								<img
+									src={img.dataUrl}
+									alt={img.name}
+									className="size-16 rounded-lg object-cover border border-border"
+								/>
+								<button
+									type="button"
+									onClick={() => handleRemoveImage(img.id)}
+									className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+								>
+									<X className="size-3" />
+								</button>
+							</div>
+						))}
+					</div>
+				)}
 				{/* Document picker popover (portal to body for proper z-index stacking) */}
 				{showDocumentPopover &&
 					typeof document !== "undefined" &&
@@ -577,7 +709,11 @@ const Composer: FC = () => {
 						/>,
 						document.body
 					)}
-				<ComposerAction isBlockedByOtherUser={isBlockedByOtherUser} />
+				<ComposerAction
+					isBlockedByOtherUser={isBlockedByOtherUser}
+					fileInputRef={fileInputRef}
+					onImageFileSelect={handleImageFileSelect}
+				/>
 				<ConnectorIndicator showTrigger={false} />
 				<ConnectToolsBanner />
 			</div>
@@ -587,9 +723,11 @@ const Composer: FC = () => {
 
 interface ComposerActionProps {
 	isBlockedByOtherUser?: boolean;
+	fileInputRef: React.RefObject<HTMLInputElement | null>;
+	onImageFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false }) => {
+const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false, fileInputRef, onImageFileSelect }) => {
 	const t = useTranslations("chat");
 	const toolLabels: Record<string, string> = useMemo(
 		() => ({
@@ -623,7 +761,8 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 		const text = composer.text?.trim() || "";
 		return text.length === 0;
 	});
-	const isComposerEmpty = isComposerTextEmpty && mentionedDocuments.length === 0;
+	const attachedImages = useAtomValue(attachedImagesAtom);
+	const isComposerEmpty = isComposerTextEmpty && mentionedDocuments.length === 0 && attachedImages.length === 0;
 
 	const { data: userConfigs } = useAtomValue(newLLMConfigsAtom);
 	const { data: globalConfigs } = useAtomValue(globalNewLLMConfigsAtom);
@@ -727,6 +866,25 @@ const ComposerAction: FC<ComposerActionProps> = ({ isBlockedByOtherUser = false 
 						</div>
 					</PopoverContent>
 				</Popover>
+				<TooltipIconButton
+					tooltip={t("attach_image")}
+					side="bottom"
+					variant="ghost"
+					size="icon"
+					className="size-[34px] rounded-full p-1 font-semibold text-xs hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30"
+					aria-label={t("attach_image")}
+					onClick={() => fileInputRef.current?.click()}
+				>
+					<ImagePlus className="size-4" />
+				</TooltipIconButton>
+				<input
+					ref={fileInputRef}
+					type="file"
+					accept="image/jpeg,image/png,image/gif,image/webp"
+					multiple
+					className="hidden"
+					onChange={onImageFileSelect}
+				/>
 				{!isDesktop && (
 					<TooltipIconButton
 						tooltip={t("manage_connectors")}

@@ -1152,6 +1152,20 @@
 		"instructions_placeholder": "A warm, friendly female voice with clear enunciation...",
 		"clone_dialog_title": "Clonar voz",
 		"clone_dialog_desc": "Sube un audio de referencia y su transcripción para clonar una voz.",
+		"clone_tab_upload": "Subir archivo",
+		"clone_tab_record": "Grabar voz",
+		"clone_sample_hint": "Lee este texto en voz alta (10-15 segundos)",
+		"clone_shuffle_text": "Otro texto",
+		"clone_record_start": "Iniciar grabación",
+		"clone_record_stop": "Detener grabación",
+		"clone_record_again": "Grabar de nuevo",
+		"clone_recording_timer": "{elapsed}s / 15s",
+		"clone_mic_denied": "Acceso al micrófono denegado",
+		"clone_mic_not_found": "No se encontró micrófono",
+		"clone_mic_not_supported": "Tu navegador no soporta grabación de audio",
+		"clone_mic_error": "Error al acceder al micrófono",
+		"clone_recording_too_short": "Grabación muy corta (mínimo 3 segundos)",
+		"clone_select_language_first": "Selecciona un idioma primero",
 		"audio_label": "Audio de referencia",
 		"audio_select": "Seleccionar archivo",
 		"ref_text_label": "Transcripción del audio",
@@ -1329,7 +1343,11 @@
 		"action_export_markdown": "Exportar como Markdown",
 		"action_refresh": "Actualizar",
 		"branch_previous": "Anterior",
-		"branch_next": "Siguiente"
+		"branch_next": "Siguiente",
+		"attach_image": "Adjuntar imagen",
+		"image_too_large": "La imagen es demasiado grande (máx. {max})",
+		"max_images_reached": "Máximo {max} imágenes por mensaje",
+		"invalid_image_type": "Solo se admiten imágenes JPEG, PNG, GIF y WebP"
 	},
 	"team": {
 		"name": "Nombre",
@@ -1636,5 +1654,12 @@
 	"announcements": {
 		"no_announcements": "Sin anuncios",
 		"all_caught_up": "¡Estás al día! Los nuevos anuncios aparecerán aquí."
+	},
+	"browseWebTool": {
+		"errorTitle": "Error al navegar la página web",
+		"loading": "Navegando la web...",
+		"successTitle": "Navegación completada",
+		"stats": "{pages} página(s), {actions} acciones en {duration}s",
+		"morePages": "+{count} página(s) más"
 	}
 }

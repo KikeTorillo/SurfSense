@@ -1152,6 +1152,20 @@
 		"instructions_placeholder": "A warm, friendly female voice with clear enunciation...",
 		"clone_dialog_title": "आवाज़ क्लोन करें",
 		"clone_dialog_desc": "आवाज़ क्लोन करने के लिए संदर्भ ऑडियो और उसका प्रतिलेखन अपलोड करें।",
+		"clone_tab_upload": "फ़ाइल अपलोड करें",
+		"clone_tab_record": "आवाज़ रिकॉर्ड करें",
+		"clone_sample_hint": "इस पाठ को ज़ोर से पढ़ें (10-15 सेकंड)",
+		"clone_shuffle_text": "अलग पाठ",
+		"clone_record_start": "रिकॉर्डिंग शुरू करें",
+		"clone_record_stop": "रिकॉर्डिंग रोकें",
+		"clone_record_again": "फिर से रिकॉर्ड करें",
+		"clone_recording_timer": "{elapsed}से / 15सें",
+		"clone_mic_denied": "माइक्रोफ़ोन एक्सेस अस्वीकृत",
+		"clone_mic_not_found": "कोई माइक्रोफ़ोन नहीं मिला",
+		"clone_mic_not_supported": "आपका ब्राउज़र ऑडियो रिकॉर्डिंग का समर्थन नहीं करता",
+		"clone_mic_error": "माइक्रोफ़ोन एक्सेस करने में त्रुटि",
+		"clone_recording_too_short": "रिकॉर्डिंग बहुत छोटी (न्यूनतम 3 सेकंड)",
+		"clone_select_language_first": "पहले भाषा चुनें",
 		"audio_label": "संदर्भ ऑडियो",
 		"audio_select": "फ़ाइल चुनें",
 		"ref_text_label": "ऑडियो प्रतिलेखन",
@@ -1329,7 +1343,11 @@
 		"action_export_markdown": "Markdown के रूप में निर्यात करें",
 		"action_refresh": "रीफ्रेश करें",
 		"branch_previous": "पिछला",
-		"branch_next": "अगला"
+		"branch_next": "अगला",
+		"attach_image": "छवि संलग्न करें",
+		"image_too_large": "छवि बहुत बड़ी है (अधिकतम {max})",
+		"max_images_reached": "प्रति संदेश अधिकतम {max} छवियाँ",
+		"invalid_image_type": "केवल JPEG, PNG, GIF और WebP छवियाँ समर्थित हैं"
 	},
 	"team": {
 		"name": "नाम",
@@ -1636,5 +1654,12 @@
 	"announcements": {
 		"no_announcements": "कोई घोषणा नहीं",
 		"all_caught_up": "आप अपडेट हैं! नई घोषणाएं यहां दिखाई देंगी।"
+	},
+	"browseWebTool": {
+		"errorTitle": "वेबपेज ब्राउज़ करने में विफल",
+		"loading": "वेब ब्राउज़ कर रहा है...",
+		"successTitle": "ब्राउज़िंग पूर्ण",
+		"stats": "{pages} पेज, {actions} क्रियाएं {duration} सेकंड में",
+		"morePages": "+{count} और पेज"
 	}
 }

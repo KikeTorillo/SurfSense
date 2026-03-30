@@ -41,6 +41,7 @@ def _get_global_video_gen_config(config_id: int) -> dict | None:
 def create_generate_video_tool(
     search_space_id: int,
     db_session: AsyncSession,
+    user_image_data_urls: list[str] | None = None,
 ):
     """
     Factory function to create the generate_video tool.
@@ -48,6 +49,7 @@ def create_generate_video_tool(
     Args:
         search_space_id: The search space ID (for config resolution)
         db_session: Async database session
+        user_image_data_urls: Base64 data URLs of images attached by the user in the current message
     """
 
     @tool
@@ -62,13 +64,19 @@ def create_generate_video_tool(
         Use this tool when the user asks you to create, generate, or make a video,
         animation, or clip. The generated video will be displayed in the chat.
 
+        When the user attached an image in this conversation and asks to animate it
+        or generate a video from it, use mode="i2v". The attached image will be used
+        automatically — you do NOT need to pass the image data in image_url.
+
         Args:
             prompt: A detailed text description of the video to generate.
                     Be specific about subject, action, style, and mood.
             mode: Generation mode — "t2v" for text-to-video (default),
-                  "i2v" for image-to-video (requires image_url).
-            image_url: URL of the source image (required only for i2v mode).
-                       The image will be animated into a video.
+                  "i2v" for image-to-video. When the user has attached an image
+                  and asks to animate or create a video from it, use "i2v".
+            image_url: Optional HTTP URL of a source image for i2v mode.
+                       Not needed when the user attached an image in the chat —
+                       the attached image is used automatically.
 
         Returns:
             A dictionary containing the generated video URL for display in the chat.
@@ -130,21 +138,36 @@ def create_generate_video_tool(
             size = extra.get("size", "768x512")
             frames = extra.get("frames", 97)
 
-            # For i2v mode, download the source image and convert to base64
+            # For i2v mode, resolve the source image to base64
             image_base64 = None
-            if mode == "i2v" and image_url:
+            if mode == "i2v":
+                # Priority: 1) user-attached images from current message, 2) explicit image_url
+                source_url = None
+                if user_image_data_urls:
+                    source_url = user_image_data_urls[0]
+                elif image_url:
+                    source_url = image_url
+
+                if not source_url:
+                    return {"error": "No image available for i2v mode. The user needs to attach an image."}
+
                 try:
-                    async with aiohttp.ClientSession() as http_session:
-                        async with http_session.get(
-                            image_url,
-                            timeout=aiohttp.ClientTimeout(total=30),
-                        ) as resp:
-                            if resp.status != 200:
-                                return {"error": f"Failed to download image from {image_url}"}
-                            image_bytes = await resp.read()
-                            image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+                    if source_url.startswith("data:image/"):
+                        # Already a base64 data URL — extract the payload
+                        image_base64 = source_url.split(",", 1)[1] if "," in source_url else source_url
+                    else:
+                        # HTTP(S) URL — download the image
+                        async with aiohttp.ClientSession() as http_session:
+                            async with http_session.get(
+                                source_url,
+                                timeout=aiohttp.ClientTimeout(total=30),
+                            ) as resp:
+                                if resp.status != 200:
+                                    return {"error": f"Failed to download image from {source_url}"}
+                                image_bytes = await resp.read()
+                                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
                 except Exception as e:
-                    return {"error": f"Failed to download source image: {e!s}"}
+                    return {"error": f"Failed to resolve source image: {e!s}"}
 
             # Call video generation API
             response = await VideoGenService.generate_video(
